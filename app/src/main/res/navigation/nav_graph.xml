@@ -1,0 +1,132 @@
+<?xml version="1.0" encoding="utf-8"?>
+<navigation xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/nav_graph"
+    app:startDestination="@id/homeFragment">
+
+    <!-- Accueil -->
+    <fragment
+        android:id="@+id/homeFragment"
+        android:name="com.jdcosmetics.stockcollect.ui.home.HomeFragment"
+        android:label="StockCollect"
+        tools:layout="@layout/fragment_home">
+        <action android:id="@+id/action_home_to_scan"
+            app:destination="@id/scanFragment" />
+        <action android:id="@+id/action_home_to_nouvelle_session"
+            app:destination="@id/nouvelleSessionFragment" />
+        <action android:id="@+id/action_home_to_historique"
+            app:destination="@id/historiqueFragment" />
+        <action android:id="@+id/action_home_to_import"
+            app:destination="@id/importCatalogueFragment" />
+        <action android:id="@+id/action_home_to_saisie"
+            app:destination="@id/saisieFragment" />
+    </fragment>
+
+    <!-- Scanner code-barres -->
+    <fragment
+        android:id="@+id/scanFragment"
+        android:name="com.jdcosmetics.stockcollect.ui.scan.ScanFragment"
+        android:label="Scanner"
+        tools:layout="@layout/fragment_scan">
+        <action android:id="@+id/action_scan_to_resultat"
+            app:destination="@id/scanResultatFragment" />
+    </fragment>
+
+    <!-- Résultat du scan -->
+    <fragment
+        android:id="@+id/scanResultatFragment"
+        android:name="com.jdcosmetics.stockcollect.ui.scan.ScanResultatFragment"
+        android:label="Article identifié"
+        tools:layout="@layout/fragment_scan_resultat">
+        <argument
+            android:name="codeBarre"
+            app:argType="string"
+            android:defaultValue="" />
+    </fragment>
+
+    <!-- Nouvelle session -->
+    <fragment
+        android:id="@+id/nouvelleSessionFragment"
+        android:name="com.jdcosmetics.stockcollect.ui.session.NouvelleSessionFragment"
+        android:label="Nouvelle session"
+        tools:layout="@layout/fragment_nouvelle_session">
+        <action android:id="@+id/action_nouvelle_session_to_saisie"
+            app:destination="@id/saisieFragment" />
+    </fragment>
+
+    <!-- Saisie en cours -->
+    <fragment
+        android:id="@+id/saisieFragment"
+        android:name="com.jdcosmetics.stockcollect.ui.session.SaisieFragment"
+        android:label="Saisie en cours"
+        tools:layout="@layout/fragment_saisie">
+        <argument
+            android:name="idSession"
+            app:argType="long" />
+        <action android:id="@+id/action_saisie_to_scan"
+            app:destination="@id/scanFragment" />
+        <action android:id="@+id/action_saisie_to_recapitulatif"
+            app:destination="@id/recapitulatifFragment" />
+    </fragment>
+
+    <!-- Récapitulatif avant clôture -->
+    <fragment
+        android:id="@+id/recapitulatifFragment"
+        android:name="com.jdcosmetics.stockcollect.ui.session.RecapitulatifFragment"
+        android:label="Récapitulatif"
+        tools:layout="@layout/fragment_recapitulatif">
+        <argument
+            android:name="idSession"
+            app:argType="long" />
+        <action android:id="@+id/action_recapitulatif_to_home"
+            app:destination="@id/homeFragment"
+            app:popUpTo="@id/homeFragment"
+            app:popUpToInclusive="true" />
+    </fragment>
+
+    <!-- Historique -->
+    <fragment
+        android:id="@+id/historiqueFragment"
+        android:name="com.jdcosmetics.stockcollect.ui.historique.HistoriqueFragment"
+        android:label="Historique"
+        tools:layout="@layout/fragment_historique">
+        <action android:id="@+id/action_historique_to_export"
+            app:destination="@id/exportFragment" />
+        <action android:id="@+id/action_historique_to_saisie"
+            app:destination="@id/saisieFragment" />
+        <action android:id="@+id/action_historique_to_detail"
+            app:destination="@id/detailSessionFragment" />
+    </fragment>
+
+    <!-- Import catalogue -->
+    <fragment
+        android:id="@+id/importCatalogueFragment"
+        android:name="com.jdcosmetics.stockcollect.ui.import_catalogue.ImportCatalogueFragment"
+        android:label="Import catalogue"
+        tools:layout="@layout/fragment_import_catalogue" />
+
+    <!-- Export CSV -->
+    <fragment
+        android:id="@+id/exportFragment"
+        android:name="com.jdcosmetics.stockcollect.ui.export.ExportFragment"
+        android:label="Exporter"
+        tools:layout="@layout/fragment_export">
+        <argument
+            android:name="idSession"
+            app:argType="long"
+            android:defaultValue="-1L" />
+    </fragment>
+
+    <!-- Détail session (lecture seule) -->
+    <fragment
+        android:id="@+id/detailSessionFragment"
+        android:name="com.jdcosmetics.stockcollect.ui.detail.DetailSessionFragment"
+        android:label="Détail session"
+        tools:layout="@layout/fragment_detail_session">
+        <argument
+            android:name="idSession"
+            app:argType="long" />
+    </fragment>
+
+</navigation>

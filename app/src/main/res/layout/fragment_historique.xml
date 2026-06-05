@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent" android:layout_height="match_parent"
+    android:orientation="vertical" android:background="@color/surface_variant">
+    <com.google.android.material.chip.ChipGroup android:layout_width="match_parent"
+        android:layout_height="wrap_content" android:padding="12dp">
+        <com.google.android.material.chip.Chip android:id="@+id/chip_tous"
+            android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Tous"
+            style="@style/Widget.Material3.Chip.Filter"/>
+        <com.google.android.material.chip.Chip android:id="@+id/chip_inventaire"
+            android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Inventaire"
+            style="@style/Widget.Material3.Chip.Filter"/>
+        <com.google.android.material.chip.Chip android:id="@+id/chip_entree"
+            android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Entrée"
+            style="@style/Widget.Material3.Chip.Filter"/>
+        <com.google.android.material.chip.Chip android:id="@+id/chip_sortie"
+            android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Sortie"
+            style="@style/Widget.Material3.Chip.Filter"/>
+    </com.google.android.material.chip.ChipGroup>
+    <TextView android:id="@+id/tv_aucune_session" android:layout_width="match_parent"
+        android:layout_height="0dp" android:layout_weight="1" android:gravity="center"
+        android:text="Aucune session enregistrée." android:textColor="@color/on_surface_variant"
+        android:visibility="gone"/>
+    <androidx.recyclerview.widget.RecyclerView android:id="@+id/rv_sessions"
+        android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1"
+        android:padding="12dp"/>
+</LinearLayout>

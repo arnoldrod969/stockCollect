@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Bleu principal JD Cosmetics -->
+    <color name="blue_primary">#185FA5</color>
+    <color name="blue_dark">#0C447C</color>
+    <color name="blue_container">#E6F1FB</color>
+    <color name="blue_on_container">#0C447C</color>
+
+    <!-- Vert (succès / exporté) -->
+    <color name="green_secondary">#0F6E56</color>
+    <color name="green_container">#EAF3DE</color>
+    <color name="green_on_container">#3B6D11</color>
+
+    <!-- Orange (brouillon / avertissement) -->
+    <color name="amber_container">#FAEEDA</color>
+    <color name="amber_on_container">#854F0B</color>
+    <color name="amber_border">#FAC775</color>
+
+    <!-- Rouge (erreur / alerte) -->
+    <color name="red_container">#FCEBEB</color>
+    <color name="red_on_container">#A32D2D</color>
+    <color name="red_border">#F7C1C1</color>
+
+    <!-- Neutres -->
+    <color name="white">#FFFFFF</color>
+    <color name="surface">#FFFFFF</color>
+    <color name="on_surface">#1A1A1A</color>
+    <color name="surface_variant">#F4F6F9</color>
+    <color name="on_surface_variant">#595959</color>
+    <color name="border">#DDDDDD</color>
+
+    <!-- Caméra scan -->
+    <color name="scan_overlay">#99000000</color>
+    <color name="scan_corner">#185FA5</color>
+    <color name="scan_line">#99185FA5</color>
+</resources>

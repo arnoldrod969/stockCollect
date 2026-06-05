@@ -1,0 +1,111 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/surface_variant">
+    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:orientation="vertical">
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:background="@color/blue_primary" android:padding="16dp" android:orientation="vertical">
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:text="StockCollect" android:textColor="@color/white" android:textSize="18sp" android:textStyle="bold"/>
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:text="JD Cosmetics" android:textColor="@color/blue_container" android:textSize="13sp"/>
+        </LinearLayout>
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:padding="16dp" android:orientation="vertical">
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/card_reprendre_brouillon"
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:layout_marginBottom="12dp" android:visibility="gone"
+                app:cardElevation="2dp" app:cardCornerRadius="12dp"
+                app:strokeWidth="2dp" app:strokeColor="@color/amber_on_container">
+                <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:orientation="vertical" android:padding="14dp">
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                        android:text="Session en cours" android:textSize="10sp"
+                        android:textColor="@color/on_surface_variant"/>
+                    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+                        android:orientation="horizontal" android:gravity="center_vertical"
+                        android:layout_marginTop="4dp">
+                        <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content"
+                            android:layout_weight="1" android:orientation="vertical">
+                            <TextView android:id="@+id/tv_brouillon_type"
+                                android:layout_width="wrap_content" android:layout_height="wrap_content"
+                                android:textSize="15sp" android:textStyle="bold"/>
+                            <TextView android:id="@+id/tv_brouillon_date"
+                                android:layout_width="wrap_content" android:layout_height="wrap_content"
+                                android:textSize="11sp" android:textColor="@color/on_surface_variant"/>
+                        </LinearLayout>
+                        <com.google.android.material.button.MaterialButton android:id="@+id/btn_reprendre_brouillon"
+                            android:layout_width="wrap_content" android:layout_height="36dp"
+                            android:text="Reprendre" android:textSize="12sp"
+                            app:cornerRadius="8dp" app:backgroundTint="@color/amber_on_container"/>
+                    </LinearLayout>
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:orientation="horizontal" android:layout_marginBottom="12dp">
+                <com.google.android.material.card.MaterialCardView android:layout_width="0dp"
+                    android:layout_height="wrap_content" android:layout_weight="1" android:layout_marginEnd="6dp"
+                    app:cardElevation="2dp" app:cardCornerRadius="12dp">
+                    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+                        android:orientation="vertical" android:padding="12dp">
+                        <TextView android:id="@+id/tv_nb_sessions" android:layout_width="wrap_content"
+                            android:layout_height="wrap_content" android:text="0" android:textSize="28sp" android:textStyle="bold"/>
+                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                            android:text="Sessions" android:textSize="12sp" android:textColor="@color/on_surface_variant"/>
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
+                <com.google.android.material.card.MaterialCardView android:layout_width="0dp"
+                    android:layout_height="wrap_content" android:layout_weight="1" android:layout_marginStart="6dp"
+                    app:cardElevation="2dp" app:cardCornerRadius="12dp">
+                    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+                        android:orientation="vertical" android:padding="12dp">
+                        <TextView android:id="@+id/tv_nb_articles" android:layout_width="wrap_content"
+                            android:layout_height="wrap_content" android:text="0" android:textSize="28sp" android:textStyle="bold"/>
+                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                            android:text="Articles" android:textSize="12sp" android:textColor="@color/on_surface_variant"/>
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
+            </LinearLayout>
+            <com.google.android.material.button.MaterialButton android:id="@+id/btn_scanner"
+                android:layout_width="match_parent" android:layout_height="52dp"
+                android:text="📷 Scanner un article" android:layout_marginBottom="8dp" app:cornerRadius="10dp"/>
+            <com.google.android.material.button.MaterialButton android:id="@+id/btn_nouvelle_session"
+                android:layout_width="match_parent" android:layout_height="52dp"
+                android:text="📋 Nouvelle session" android:layout_marginBottom="12dp" app:cornerRadius="10dp"
+                app:backgroundTint="@color/green_secondary"/>
+            <com.google.android.material.card.MaterialCardView android:layout_width="match_parent"
+                android:layout_height="wrap_content" app:cardElevation="2dp" app:cardCornerRadius="12dp">
+                <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:orientation="vertical">
+                    <LinearLayout android:id="@+id/row_historique" android:layout_width="match_parent"
+                        android:layout_height="56dp" android:orientation="horizontal" android:gravity="center_vertical"
+                        android:paddingHorizontal="16dp" android:background="?attr/selectableItemBackground">
+                        <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1"
+                            android:text="Historique" android:textSize="14sp" android:textStyle="bold"/>
+                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="›"
+                            android:textSize="20sp" android:textColor="@color/on_surface_variant"/>
+                    </LinearLayout>
+                    <View android:layout_width="match_parent" android:layout_height="0.5dp" android:background="@color/border"/>
+                    <LinearLayout android:id="@+id/row_import" android:layout_width="match_parent"
+                        android:layout_height="56dp" android:orientation="horizontal" android:gravity="center_vertical"
+                        android:paddingHorizontal="16dp" android:background="?attr/selectableItemBackground">
+                        <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1"
+                            android:orientation="vertical">
+                            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                                android:text="Import catalogue" android:textSize="14sp" android:textStyle="bold"/>
+                            <TextView android:id="@+id/tv_dernier_import" android:layout_width="wrap_content"
+                                android:layout_height="wrap_content" android:text="—" android:textSize="11sp"
+                                android:textColor="@color/on_surface_variant"/>
+                        </LinearLayout>
+                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="›"
+                            android:textSize="20sp" android:textColor="@color/on_surface_variant"/>
+                    </LinearLayout>
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+        </LinearLayout>
+    </LinearLayout>
+</ScrollView>

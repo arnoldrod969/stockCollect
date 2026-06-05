@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent" android:layout_height="match_parent"
+    android:orientation="vertical" android:background="@color/surface_variant">
+    <com.google.android.material.card.MaterialCardView
+        android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:layout_margin="12dp" app:cardElevation="2dp" app:cardCornerRadius="12dp">
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:orientation="vertical" android:padding="16dp">
+            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:orientation="horizontal" android:gravity="center_vertical">
+                <TextView android:id="@+id/tv_type_operation" android:layout_width="0dp"
+                    android:layout_height="wrap_content" android:layout_weight="1"
+                    android:textSize="16sp" android:textStyle="bold"/>
+                <TextView android:id="@+id/tv_statut" android:layout_width="wrap_content"
+                    android:layout_height="wrap_content" android:textSize="10sp"
+                    android:paddingHorizontal="10dp" android:paddingVertical="3dp"
+                    android:background="@drawable/bg_chip" android:textColor="@color/white"/>
+            </LinearLayout>
+            <TextView android:id="@+id/tv_date_heure" android:layout_width="wrap_content"
+                android:layout_height="wrap_content" android:layout_marginTop="4dp"
+                android:textSize="12sp" android:textColor="@color/on_surface_variant"/>
+            <TextView android:id="@+id/tv_lieu" android:layout_width="wrap_content"
+                android:layout_height="wrap_content" android:layout_marginTop="2dp"
+                android:textSize="12sp" android:textColor="@color/on_surface_variant"/>
+            <TextView android:id="@+id/tv_observations" android:layout_width="wrap_content"
+                android:layout_height="wrap_content" android:layout_marginTop="2dp"
+                android:textSize="12sp" android:textColor="@color/on_surface_variant"/>
+            <View android:layout_width="match_parent" android:layout_height="0.5dp"
+                android:background="@color/border" android:layout_marginVertical="12dp"/>
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:text="Articles saisis" android:textSize="12sp" android:textColor="@color/on_surface_variant"/>
+            <TextView android:id="@+id/tv_nb_lignes" android:layout_width="wrap_content"
+                android:layout_height="wrap_content" android:textSize="15sp" android:textStyle="bold"/>
+        </LinearLayout>
+    </com.google.android.material.card.MaterialCardView>
+    <TextView android:id="@+id/tv_aucune_ligne" android:layout_width="match_parent"
+        android:layout_height="wrap_content" android:gravity="center"
+        android:text="Aucun article saisi." android:textColor="@color/on_surface_variant"
+        android:padding="24dp"/>
+    <androidx.recyclerview.widget.RecyclerView android:id="@+id/rv_lignes"
+        android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1"
+        android:paddingHorizontal="12dp"/>
+</LinearLayout>

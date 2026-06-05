@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">StockCollect</string>
+    <string name="app_subtitle">JD Cosmetics</string>
+
+    <!-- Navigation -->
+    <string name="titre_accueil">StockCollect</string>
+    <string name="titre_scanner">Scanner un article</string>
+    <string name="titre_nouvelle_session">Nouvelle session</string>
+    <string name="titre_saisie">Saisie en cours</string>
+    <string name="titre_recapitulatif">Récapitulatif</string>
+    <string name="titre_historique">Historique</string>
+    <string name="titre_import">Import catalogue</string>
+    <string name="titre_export">Exporter</string>
+
+    <!-- Actions -->
+    <string name="btn_scanner">Scanner un article</string>
+    <string name="btn_nouvelle_session">Nouvelle session</string>
+    <string name="btn_historique">Historique</string>
+    <string name="btn_import">Import catalogue</string>
+    <string name="btn_commencer_saisie">Commencer la saisie</string>
+    <string name="btn_ajouter_article">Ajouter un article</string>
+    <string name="btn_cloturer">Clôturer la session</string>
+    <string name="btn_enregistrer_brouillon">Enregistrer brouillon</string>
+    <string name="btn_confirmer_cloture">Confirmer et clôturer</string>
+    <string name="btn_retour_saisie">Retour à la saisie</string>
+    <string name="btn_exporter">Générer et télécharger</string>
+    <string name="btn_choisir_fichier">Choisir le fichier</string>
+    <string name="btn_rescanner">Rescanner</string>
+
+    <!-- Types d'opération -->
+    <string name="type_inventaire">Inventaire</string>
+    <string name="type_entree">Entrée de stock</string>
+    <string name="type_sortie">Sortie de stock</string>
+    <string name="desc_inventaire">Comptage physique</string>
+    <string name="desc_entree">Réception marchandise</string>
+    <string name="desc_sortie">Expédition / vente</string>
+
+    <!-- Statuts -->
+    <string name="statut_brouillon">Brouillon</string>
+    <string name="statut_cloturee">Clôturée</string>
+    <string name="statut_exportee">Exportée</string>
+
+    <!-- Messages -->
+    <string name="msg_article_trouve">Article trouvé</string>
+    <string name="msg_article_non_trouve">Code-barres inconnu</string>
+    <string name="msg_non_trouve_detail">Non trouvé dans le catalogue ni la table de correspondance.</string>
+    <string name="msg_cloture_irreversible">Cette action est irréversible</string>
+    <string name="msg_cloture_detail">La session sera verrouillée après clôture.</string>
+    <string name="msg_import_attention">L\'import remplace le catalogue existant.</string>
+    <string name="msg_export_succes">Fichier enregistré dans Téléchargements</string>
+    <string name="msg_aucun_article">Aucun article dans le catalogue.\nImportez d\'abord un fichier CSV.</string>
+
+    <!-- Hints -->
+    <string name="hint_recherche">Rechercher un article...</string>
+    <string name="hint_code_barre">Code-barres...</string>
+    <string name="hint_observations">Texte libre...</string>
+    <string name="hint_lieu">Dépôt / Point de vente</string>
+
+    <!-- Labels -->
+    <string name="label_articles">Articles</string>
+    <string name="label_sessions">Sessions</string>
+    <string name="label_ce_mois">Ce mois</string>
+    <string name="label_maj">MAJ :</string>
+    <string name="label_session_en_cours">Session en cours</string>
+    <string name="label_lignes">lignes</string>
+    <string name="label_quantite">Quantité</string>
+    <string name="label_type">Type</string>
+    <string name="label_date_heure">Date / heure</string>
+    <string name="label_fichier_genere">Fichier généré</string>
+    <string name="label_format_export">Format export (compatible Odoo / Nirgescom)</string>
+    <string name="label_catalogue_actuel">Catalogue actuel</string>
+    <string name="label_articles_charges">Articles chargés</string>
+    <string name="label_derniere_maj">Dernière mise à jour</string>
+    <string name="label_etape_1">Étape 1 — Articles</string>
+    <string name="label_etape_2">Étape 2 — Correspondance codes-barres</string>
+    <string name="label_via_table_cb">Via table CB</string>
+    <string name="label_pointez_cb">Pointez vers le code-barres</string>
+    <string name="label_ou_saisir">Ou saisir manuellement</string>
+    <string name="label_rechercher_nom">Rechercher par nom</string>
+    <string name="rechercher_article_hint">Rechercher un article…</string>
+    <string name="rechercher_article_empty">Saisissez au moins 2 caractères</string>
+</resources>
