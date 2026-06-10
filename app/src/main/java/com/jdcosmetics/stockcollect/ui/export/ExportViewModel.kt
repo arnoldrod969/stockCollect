@@ -7,7 +7,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.jdcosmetics.stockcollect.data.db.dao.SessionDao
 import com.jdcosmetics.stockcollect.data.db.entity.SessionEntity
-import com.jdcosmetics.stockcollect.data.db.entity.StatutSession
 import com.jdcosmetics.stockcollect.domain.service.CsvExportService
 import com.jdcosmetics.stockcollect.domain.service.ExportResult
 import com.jdcosmetics.stockcollect.util.DateUtils
@@ -31,37 +30,27 @@ class ExportViewModel @Inject constructor(
     private val _uiState = MutableLiveData<ExportUiState>(ExportUiState.Idle)
     val uiState: LiveData<ExportUiState> = _uiState
 
-    private val _sessionsCloturees = MutableLiveData<List<SessionEntity>>()
-    val sessionsCloturees: LiveData<List<SessionEntity>> = _sessionsCloturees
+    private val _sessionExportable = MutableLiveData<SessionEntity?>()
+    val sessionExportable: LiveData<SessionEntity?> = _sessionExportable
 
-    private val _sessionsSelectionnees = mutableSetOf<Long>()
+    init { chargerSessionExportable() }
 
-    init { chargerSessionsCloturees() }
-
-    private fun chargerSessionsCloturees() {
+    private fun chargerSessionExportable() {
         viewModelScope.launch {
-            sessionDao.getSessionsByStatut(StatutSession.CLOTUREE).collect { sessions ->
-                _sessionsCloturees.value = sessions
-            }
+            _sessionExportable.value = sessionDao.getMostRecentCloturee()
         }
     }
 
-    fun toggleSelection(idSession: Long) {
-        if (_sessionsSelectionnees.contains(idSession)) _sessionsSelectionnees.remove(idSession)
-        else _sessionsSelectionnees.add(idSession)
-    }
-
-    fun isSelectionne(idSession: Long) = _sessionsSelectionnees.contains(idSession)
-
     fun exporter(outputUri: Uri) {
-        val idSession = _sessionsSelectionnees.firstOrNull() ?: return
+        val session = _sessionExportable.value ?: return
         _uiState.value = ExportUiState.Loading
         viewModelScope.launch {
-            val result = exportService.exporter(idSession, outputUri)
+            val result = exportService.exporter(session.idSession, outputUri)
             _uiState.value = when (result) {
                 is ExportResult.Succes -> ExportUiState.Succes(result.nomFichier, result.nbLignes)
                 is ExportResult.Erreur -> ExportUiState.Erreur(result.message)
             }
+            chargerSessionExportable()
         }
     }
 

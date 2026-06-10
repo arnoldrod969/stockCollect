@@ -40,7 +40,7 @@ object DateUtils {
 object FormatUtils {
 
     /** Formate une quantité avec 1 décimale minimum : 10 → "10.0" */
-    fun formatQuantite(q: Double): String = "%.1f".format(q)
+    fun formatQuantite(q: Double): String = String.format(Locale.US, "%.1f", q)
 
     /** Formate un prix FCFA : 1500.0 → "1 500 FCFA" */
     fun formatPrix(prix: Double): String {

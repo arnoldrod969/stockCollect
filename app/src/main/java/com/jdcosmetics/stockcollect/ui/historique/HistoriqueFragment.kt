@@ -32,11 +32,6 @@ class HistoriqueFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
 
         adapter = HistoriqueAdapter(
-            onExporter = { idSession ->
-                findNavController().navigate(
-                    HistoriqueFragmentDirections.actionHistoriqueToExport(idSession)
-                )
-            },
             onItemClick = { session ->
                 when (session.statut) {
                     StatutSession.BROUILLON -> {
@@ -60,9 +55,19 @@ class HistoriqueFragment : Fragment() {
         binding.chipEntree.setOnClickListener { viewModel.filtrer("ENTREE") }
         binding.chipSortie.setOnClickListener { viewModel.filtrer("SORTIE") }
 
+        binding.btnExporter.setOnClickListener {
+            findNavController().navigate(
+                HistoriqueFragmentDirections.actionHistoriqueToExport()
+            )
+        }
+
         viewModel.sessions.observe(viewLifecycleOwner) { sessions ->
             adapter.submitList(sessions)
             binding.tvAucuneSession.isVisible = sessions.isEmpty()
+        }
+
+        viewModel.aClotureeExportable.observe(viewLifecycleOwner) { exportable ->
+            binding.btnExporter.isVisible = exportable
         }
     }
 

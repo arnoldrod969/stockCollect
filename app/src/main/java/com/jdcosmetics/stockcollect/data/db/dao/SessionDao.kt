@@ -21,6 +21,9 @@ interface SessionDao {
     @Query("SELECT * FROM sessions WHERE statut = 'BROUILLON' ORDER BY date_heure_debut DESC LIMIT 1")
     suspend fun getLastBrouillon(): SessionEntity?
 
+    @Query("SELECT * FROM sessions WHERE statut = 'CLOTUREE' ORDER BY date_heure_debut DESC LIMIT 1")
+    suspend fun getMostRecentCloturee(): SessionEntity?
+
     @Query("SELECT COUNT(*) FROM sessions")
     suspend fun count(): Int
 

@@ -43,6 +43,14 @@ class SaisieViewModel @Inject constructor(
         _uiState.value = SaisieUiState.Loading
         viewModelScope.launch {
             try {
+                val brouillonExistant = repository.getLastBrouillon()
+                if (brouillonExistant != null) {
+                    _idSessionCourante = brouillonExistant.idSession
+                    chargerSession(brouillonExistant.idSession)
+                    observerLignes(brouillonExistant.idSession)
+                    _uiState.value = SaisieUiState.SessionCreee(brouillonExistant.idSession)
+                    return@launch
+                }
                 val id = repository.creerSession(typeOperation, lieu, observations)
                 _idSessionCourante = id
                 chargerSession(id)

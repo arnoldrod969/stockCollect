@@ -52,6 +52,12 @@ class SessionRepository @Inject constructor(
         codeBarreScanne: String?,
         quantite: Double
     ): Long {
+        val ligneExistante = ligneDao.getLigneBySessionAndProduit(idSession, article.codeProduit)
+        if (ligneExistante != null) {
+            val nouvelleQuantite = ligneExistante.quantite + quantite
+            ligneDao.update(ligneExistante.copy(quantite = nouvelleQuantite))
+            return ligneExistante.idLigne
+        }
         val ligne = LigneCollecteEntity(
             idSession = idSession,
             codeProduit = article.codeProduit,

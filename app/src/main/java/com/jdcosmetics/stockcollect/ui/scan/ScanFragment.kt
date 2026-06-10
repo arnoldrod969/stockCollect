@@ -75,26 +75,28 @@ class ScanFragment : Fragment() {
     }
 
     private fun observeViewModel() {
-        viewModel.uiState.observe(viewLifecycleOwner) { state ->
-            when (state) {
-                is ScanUiState.Loading -> {
-                    binding.progressScan.isVisible = true
+        viewModel.uiState.observe(viewLifecycleOwner) { event ->
+            event.consume()?.let { state ->
+                when (state) {
+                    is ScanUiState.Loading -> {
+                        binding.progressScan.isVisible = true
+                    }
+                    is ScanUiState.Resolu -> {
+                        binding.progressScan.isVisible = false
+                        vibrer()
+                        val action = ScanFragmentDirections
+                            .actionScanToResultat(state.result.codeBarre)
+                        findNavController().navigate(action)
+                    }
+                    is ScanUiState.NonTrouve -> {
+                        binding.progressScan.isVisible = false
+                        vibrer(longue = true)
+                        val action = ScanFragmentDirections
+                            .actionScanToResultat(state.codeBarre)
+                        findNavController().navigate(action)
+                    }
+                    else -> binding.progressScan.isVisible = false
                 }
-                is ScanUiState.Resolu -> {
-                    binding.progressScan.isVisible = false
-                    vibrer()
-                    val action = ScanFragmentDirections
-                        .actionScanToResultat(state.result.codeBarre)
-                    findNavController().navigate(action)
-                }
-                is ScanUiState.NonTrouve -> {
-                    binding.progressScan.isVisible = false
-                    vibrer(longue = true)
-                    val action = ScanFragmentDirections
-                        .actionScanToResultat(state.codeBarre)
-                    findNavController().navigate(action)
-                }
-                else -> binding.progressScan.isVisible = false
             }
         }
     }

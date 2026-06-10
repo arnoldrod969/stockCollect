@@ -18,6 +18,9 @@ class HistoriqueViewModel @Inject constructor(
     private val _sessions = MutableLiveData<List<SessionEntity>>()
     val sessions: LiveData<List<SessionEntity>> = _sessions
 
+    private val _aClotureeExportable = MutableLiveData(false)
+    val aClotureeExportable: LiveData<Boolean> = _aClotureeExportable
+
     private var filtre: String? = null
     private var touteSessions: List<SessionEntity> = emptyList()
 
@@ -28,6 +31,11 @@ class HistoriqueViewModel @Inject constructor(
             sessionDao.getAllSessions().collect { liste ->
                 touteSessions = liste
                 appliquerFiltre()
+            }
+        }
+        viewModelScope.launch {
+            sessionDao.getSessionsByStatut("CLOTUREE").collect { sessions ->
+                _aClotureeExportable.value = sessions.isNotEmpty()
             }
         }
     }

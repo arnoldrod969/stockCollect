@@ -10,9 +10,11 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
-import androidx.recyclerview.widget.LinearLayoutManager
 import com.google.android.material.snackbar.Snackbar
+import com.jdcosmetics.stockcollect.data.db.entity.StatutSession
+import com.jdcosmetics.stockcollect.data.db.entity.TypeOperation
 import com.jdcosmetics.stockcollect.databinding.FragmentExportBinding
+import com.jdcosmetics.stockcollect.util.DateUtils
 import dagger.hilt.android.AndroidEntryPoint
 
 @AndroidEntryPoint
@@ -22,7 +24,6 @@ class ExportFragment : Fragment() {
     private val binding get() = _binding!!
 
     private val viewModel: ExportViewModel by viewModels()
-    private lateinit var adapter: SessionExportAdapter
 
     private val createFileLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
@@ -42,20 +43,8 @@ class ExportFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        setupRecyclerView()
         setupListeners()
         observeViewModel()
-    }
-
-    private fun setupRecyclerView() {
-        adapter = SessionExportAdapter { idSession ->
-            viewModel.toggleSelection(idSession)
-            majBoutonExport()
-        }
-        binding.rvSessions.apply {
-            layoutManager = LinearLayoutManager(requireContext())
-            this.adapter = this@ExportFragment.adapter
-        }
     }
 
     private fun setupListeners() {
@@ -65,9 +54,26 @@ class ExportFragment : Fragment() {
     }
 
     private fun observeViewModel() {
-        viewModel.sessionsCloturees.observe(viewLifecycleOwner) { sessions ->
-            adapter.submitList(sessions)
-            binding.tvAucuneSession.isVisible = sessions.isEmpty()
+        viewModel.sessionExportable.observe(viewLifecycleOwner) { session ->
+            if (session != null) {
+                binding.groupSession.isVisible = true
+                binding.tvAucuneSession.isVisible = false
+                binding.btnExporter.isEnabled = true
+
+                binding.tvTypeOperation.text = TypeOperation.label(session.typeOperation)
+                binding.tvDateHeure.text = DateUtils.toDisplay(session.dateHeureDebut)
+                binding.tvNbLignes.text = "${session.nbLignes} ligne${if (session.nbLignes > 1) "s" else ""}"
+                val statutTexte = when (session.statut) {
+                    StatutSession.CLOTUREE -> "Clôturée"
+                    StatutSession.EXPORTEE -> "Exportée"
+                    else -> session.statut
+                }
+                binding.tvStatut.text = statutTexte
+            } else {
+                binding.groupSession.isVisible = false
+                binding.tvAucuneSession.isVisible = true
+                binding.btnExporter.isEnabled = false
+            }
         }
 
         viewModel.uiState.observe(viewLifecycleOwner) { state ->
@@ -107,12 +113,6 @@ class ExportFragment : Fragment() {
             putExtra(Intent.EXTRA_TITLE, nomFichier)
         }
         createFileLauncher.launch(intent)
-    }
-
-    private fun majBoutonExport() {
-        binding.btnExporter.isEnabled = adapter.currentList.any {
-            viewModel.isSelectionne(it.idSession)
-        }
     }
 
     override fun onDestroyView() {

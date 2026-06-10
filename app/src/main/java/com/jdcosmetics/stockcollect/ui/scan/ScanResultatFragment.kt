@@ -44,8 +44,8 @@ class ScanResultatFragment : Fragment() {
     }
 
     private fun observeViewModel() {
-        scanViewModel.uiState.observe(viewLifecycleOwner) { state ->
-            when (state) {
+        scanViewModel.uiState.observe(viewLifecycleOwner) { event ->
+            when (val state = event.peek()) {
                 is ScanUiState.Resolu -> afficherSucces(state.result)
                 is ScanUiState.NonTrouve -> afficherEchec(state.codeBarre)
                 is ScanUiState.Loading -> binding.progressResolution.isVisible = true
@@ -68,7 +68,7 @@ class ScanResultatFragment : Fragment() {
         }
 
         binding.btnAjouter.setOnClickListener {
-            val state = scanViewModel.uiState.value
+            val state = scanViewModel.uiState.value?.peek()
             if (state is ScanUiState.Resolu) {
                 saisieViewModel.ajouterLigne(
                     article = state.result.article,

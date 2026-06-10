@@ -21,7 +21,7 @@ class CsvImportService @Inject constructor(
     private val artCodebarreDao: ArtCodebarreDao
 ) {
 
-    suspend fun importCatalogue(uri: Uri, remplacerExistants: Boolean = true): ImportResult =
+    suspend fun importCatalogue(uri: Uri): ImportResult =
         withContext(Dispatchers.IO) {
 
             val (separateur, lignes) = try {
@@ -120,22 +120,29 @@ class CsvImportService @Inject constructor(
             }
 
             try {
-                if (remplacerExistants) {
-                    artCodebarreDao.deleteAll()
-                    articleDao.deleteAll()
+                val existants = articleDao.getAllCodeProduits().toHashSet()
+                val aInserer = mutableListOf<ArticleEntity>()
+                val aMettreAJour = mutableListOf<ArticleEntity>()
+
+                for (article in articlesValides) {
+                    if (article.codeProduit in existants) {
+                        aMettreAJour.add(article)
+                    } else {
+                        aInserer.add(article)
+                    }
                 }
 
-                val nbAvant = articleDao.count()
-                articleDao.insertOrReplace(articlesValides)
-                val nbApres = articleDao.count()
-
-                val nbNouveaux = maxOf(0, nbApres - nbAvant)
-                val nbMisAJour = articlesValides.size - nbNouveaux
+                if (aMettreAJour.isNotEmpty()) {
+                    articleDao.updateArticles(aMettreAJour)
+                }
+                if (aInserer.isNotEmpty()) {
+                    articleDao.insertOrReplace(aInserer)
+                }
 
                 ImportResult(
                     success = true,
-                    nbImportes = nbNouveaux,
-                    nbMisAJour = maxOf(0, nbMisAJour),
+                    nbImportes = aInserer.size,
+                    nbMisAJour = aMettreAJour.size,
                     nbIgnores = nbIgnores,
                     nbErreurs = erreurs.size,
                     erreurs = erreurs

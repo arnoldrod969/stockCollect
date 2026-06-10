@@ -13,6 +13,9 @@ interface LigneCollecteDao {
     @Query("SELECT * FROM lignes_collecte WHERE id_session = :idSession ORDER BY date_saisie ASC")
     suspend fun getLignesBySessionSync(idSession: Long): List<LigneCollecteEntity>
 
+    @Query("SELECT * FROM lignes_collecte WHERE id_session = :idSession AND code_produit = :codeProduit LIMIT 1")
+    suspend fun getLigneBySessionAndProduit(idSession: Long, codeProduit: String): LigneCollecteEntity?
+
     @Query("SELECT COUNT(*) FROM lignes_collecte WHERE id_session = :idSession")
     suspend fun countBySession(idSession: Long): Int
 

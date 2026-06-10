@@ -11,6 +11,7 @@
         android:name="com.jdcosmetics.stockcollect.ui.home.HomeFragment"
         android:label="StockCollect"
         tools:layout="@layout/fragment_home">
+        <argument android:name="dummy" app:argType="string" android:defaultValue="" />
         <action android:id="@+id/action_home_to_scan"
             app:destination="@id/scanFragment" />
         <action android:id="@+id/action_home_to_nouvelle_session"
@@ -29,6 +30,7 @@
         android:name="com.jdcosmetics.stockcollect.ui.scan.ScanFragment"
         android:label="Scanner"
         tools:layout="@layout/fragment_scan">
+        <argument android:name="dummy" app:argType="string" android:defaultValue="" />
         <action android:id="@+id/action_scan_to_resultat"
             app:destination="@id/scanResultatFragment" />
     </fragment>
@@ -51,6 +53,7 @@
         android:name="com.jdcosmetics.stockcollect.ui.session.NouvelleSessionFragment"
         android:label="Nouvelle session"
         tools:layout="@layout/fragment_nouvelle_session">
+        <argument android:name="dummy" app:argType="string" android:defaultValue="" />
         <action android:id="@+id/action_nouvelle_session_to_saisie"
             app:destination="@id/saisieFragment" />
     </fragment>
@@ -91,6 +94,7 @@
         android:name="com.jdcosmetics.stockcollect.ui.historique.HistoriqueFragment"
         android:label="Historique"
         tools:layout="@layout/fragment_historique">
+        <argument android:name="dummy" app:argType="string" android:defaultValue="" />
         <action android:id="@+id/action_historique_to_export"
             app:destination="@id/exportFragment" />
         <action android:id="@+id/action_historique_to_saisie"
@@ -104,7 +108,9 @@
         android:id="@+id/importCatalogueFragment"
         android:name="com.jdcosmetics.stockcollect.ui.import_catalogue.ImportCatalogueFragment"
         android:label="Import catalogue"
-        tools:layout="@layout/fragment_import_catalogue" />
+        tools:layout="@layout/fragment_import_catalogue">
+        <argument android:name="dummy" app:argType="string" android:defaultValue="" />
+    </fragment>
 
     <!-- Export CSV -->
     <fragment

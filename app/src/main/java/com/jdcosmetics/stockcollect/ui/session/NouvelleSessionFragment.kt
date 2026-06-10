@@ -36,26 +36,16 @@ class NouvelleSessionFragment : Fragment() {
     }
 
     private fun setupTypeSelection() {
-        marquerTypeSelectionne(TypeOperation.INVENTAIRE)
+        marquerTypeSelectionne()
 
         binding.cardInventaire.setOnClickListener {
             typeSelectionne = TypeOperation.INVENTAIRE
-            marquerTypeSelectionne(TypeOperation.INVENTAIRE)
-        }
-        binding.cardEntree.setOnClickListener {
-            typeSelectionne = TypeOperation.ENTREE
-            marquerTypeSelectionne(TypeOperation.ENTREE)
-        }
-        binding.cardSortie.setOnClickListener {
-            typeSelectionne = TypeOperation.SORTIE
-            marquerTypeSelectionne(TypeOperation.SORTIE)
+            marquerTypeSelectionne()
         }
     }
 
-    private fun marquerTypeSelectionne(type: String) {
-        binding.cardInventaire.strokeWidth = if (type == TypeOperation.INVENTAIRE) 3 else 0
-        binding.cardEntree.strokeWidth = if (type == TypeOperation.ENTREE) 3 else 0
-        binding.cardSortie.strokeWidth = if (type == TypeOperation.SORTIE) 3 else 0
+    private fun marquerTypeSelectionne() {
+        binding.cardInventaire.strokeWidth = 3
     }
 
     private fun setupListeners() {

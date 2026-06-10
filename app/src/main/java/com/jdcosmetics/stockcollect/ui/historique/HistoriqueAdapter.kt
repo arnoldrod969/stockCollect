@@ -12,7 +12,6 @@ import com.jdcosmetics.stockcollect.databinding.ItemSessionHistoriqueBinding
 import com.jdcosmetics.stockcollect.util.DateUtils
 
 class HistoriqueAdapter(
-    private val onExporter: (Long) -> Unit,
     private val onItemClick: (SessionEntity) -> Unit = {}
 ) : ListAdapter<SessionEntity, HistoriqueAdapter.ViewHolder>(DiffCallback) {
 
@@ -24,18 +23,14 @@ class HistoriqueAdapter(
             binding.tvDate.text = DateUtils.toDisplay(session.dateHeureDebut)
             binding.tvNbLignes.text = "${session.nbLignes} ligne${if (session.nbLignes > 1) "s" else ""}"
 
-            val (texte, couleur) = when (session.statut) {
-                StatutSession.BROUILLON -> Pair("Brouillon", android.R.color.holo_orange_light)
-                StatutSession.CLOTUREE -> Pair("Clôturée", android.R.color.holo_blue_light)
-                StatutSession.EXPORTEE -> Pair("Exportée", android.R.color.holo_green_light)
-                else -> Pair(session.statut, android.R.color.darker_gray)
+            val texte = when (session.statut) {
+                StatutSession.BROUILLON -> "Brouillon"
+                StatutSession.CLOTUREE -> "Clôturée"
+                StatutSession.EXPORTEE -> "Exportée"
+                else -> session.statut
             }
             binding.tvStatut.text = texte
 
-            binding.btnExporter.visibility = if (session.statut == StatutSession.CLOTUREE)
-                android.view.View.VISIBLE else android.view.View.GONE
-
-            binding.btnExporter.setOnClickListener { onExporter(session.idSession) }
             binding.root.setOnClickListener { onItemClick(session) }
         }
     }

@@ -24,6 +24,10 @@ interface ArticleDao {
     @Query("SELECT * FROM articles WHERE nom_produit LIKE '%' || :query || '%' ORDER BY nom_produit ASC LIMIT 50")
     suspend fun searchByNomSync(query: String): List<ArticleEntity>
 
+    /** Retourne tous les code_produit existants */
+    @Query("SELECT code_produit FROM articles")
+    suspend fun getAllCodeProduits(): List<String>
+
     /** Nombre total d'articles dans le catalogue */
     @Query("SELECT COUNT(*) FROM articles")
     suspend fun count(): Int
@@ -37,6 +41,10 @@ interface ArticleDao {
     /** Insert ou remplace (utilisé lors de l'import CSV) */
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertOrReplace(articles: List<ArticleEntity>)
+
+    /** Met à jour plusieurs articles */
+    @Update
+    suspend fun updateArticles(articles: List<ArticleEntity>)
 
     /** Supprime tous les articles (avant un réimport complet) */
     @Query("DELETE FROM articles")

@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent" android:layout_height="match_parent"
     android:orientation="vertical" android:background="@color/surface_variant">
     <com.google.android.material.chip.ChipGroup android:layout_width="match_parent"
@@ -17,6 +18,11 @@
             android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Sortie"
             style="@style/Widget.Material3.Chip.Filter"/>
     </com.google.android.material.chip.ChipGroup>
+    <com.google.android.material.button.MaterialButton android:id="@+id/btn_exporter"
+        android:layout_width="match_parent" android:layout_height="44dp"
+        android:text="⬇ Exporter la dernière session clôturée"
+        android:visibility="gone" android:layout_marginHorizontal="12dp" android:layout_marginBottom="4dp"
+        app:cornerRadius="8dp" app:backgroundTint="@color/green_secondary"/>
     <TextView android:id="@+id/tv_aucune_session" android:layout_width="match_parent"
         android:layout_height="0dp" android:layout_weight="1" android:gravity="center"
         android:text="Aucune session enregistrée." android:textColor="@color/on_surface_variant"

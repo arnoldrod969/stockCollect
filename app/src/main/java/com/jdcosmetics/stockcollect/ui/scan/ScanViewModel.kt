@@ -9,6 +9,7 @@ import com.jdcosmetics.stockcollect.data.db.entity.ArticleEntity
 import com.jdcosmetics.stockcollect.domain.service.BarcodeScanService
 import com.jdcosmetics.stockcollect.domain.service.ResolutionResult
 import com.jdcosmetics.stockcollect.util.Constants
+import com.jdcosmetics.stockcollect.util.Event
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
@@ -28,8 +29,8 @@ class ScanViewModel @Inject constructor(
     private val articleDao: ArticleDao
 ) : ViewModel() {
 
-    private val _uiState = MutableLiveData<ScanUiState>(ScanUiState.Idle)
-    val uiState: LiveData<ScanUiState> = _uiState
+    private val _uiState = MutableLiveData<Event<ScanUiState>>(Event(ScanUiState.Idle))
+    val uiState: LiveData<Event<ScanUiState>> = _uiState
 
     private val _searchResults = MutableLiveData<List<ArticleEntity>>(emptyList())
     val searchResults: LiveData<List<ArticleEntity>> = _searchResults
@@ -50,12 +51,12 @@ class ScanViewModel @Inject constructor(
 
         resolutionJob?.cancel()
         resolutionJob = viewModelScope.launch {
-            _uiState.value = ScanUiState.Loading
+            _uiState.value = Event(ScanUiState.Loading)
             val result = scanService.resoudre(codeBarre)
-            _uiState.value = when (result) {
+            _uiState.value = Event(when (result) {
                 is ResolutionResult.Trouve -> ScanUiState.Resolu(result)
                 is ResolutionResult.NonTrouve -> ScanUiState.NonTrouve(result.codeBarre)
-            }
+            })
         }
     }
 
@@ -65,7 +66,7 @@ class ScanViewModel @Inject constructor(
     }
 
     fun reset() {
-        _uiState.value = ScanUiState.Idle
+        _uiState.value = Event(ScanUiState.Idle)
         dernierScanMs = 0L
     }
 }
