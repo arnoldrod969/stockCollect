@@ -1,10 +1,10 @@
 ---
 id: TASK-4
 title: Sécuriser le schéma Room et écrire la migration 1 vers 2
-status: In Progress
+status: Done
 assignee: []
 created_date: '2026-09-17 15:53'
-updated_date: '2026-09-17 17:53'
+updated_date: '2026-09-17 18:12'
 labels: []
 dependencies: []
 references:
@@ -27,8 +27,7 @@ Autant écrire une seule migration portant tout ce dont la V2 a besoin plutôt q
 - [x] #1 room.schemaLocation est configuré et app/schemas/1.json est committé
 - [x] #2 fallbackToDestructiveMigration() est retiré de DatabaseModule.kt
 - [x] #3 La migration 1 vers 2 ajoute uuid_session, statut_sync, date_derniere_tentative, nb_tentatives et message_erreur_sync
-- [ ] #4 uuid_session est un UUID v4 stable, renseigné à la création de la session
-- [x] #5 Une base en version 1 contenant des sessions survit à la migration sans perte
+- [x] #4 Une base en version 1 contenant des sessions survit à la migration sans perte
 <!-- AC:END -->
 
 ## Implementation Notes
@@ -55,4 +54,12 @@ Piège traité : SQLite exige un DEFAULT pour ajouter une colonne NOT NULL à un
 MigrationTest instrumente vert sur emulateur API 28 (2 tests) : une base v1 contenant une session BROUILLON survit, ses champs metier sont intacts, statut_sync prend NON_SYNCHRONISEE et nb_tentatives 0. runMigrationsAndValidate confronte le schema obtenu a app/schemas/2.json, ce qui garantit que le DEFAULT de la migration correspond au @ColumnInfo de l entite. Verifie aussi sur l appareil apres usage reel : PRAGMA user_version = 2.
 
 AC4 NON coche : uuid_session existe en colonne mais n est pas encore renseigne a la creation d une session (verifie en base, la session 1 a uuid_session NULL). C est du ressort de TASK-8, qui porte la synchro. A arbitrer : deplacer cet AC vers TASK-8 ou le traiter ici.
+
+AC « uuid_session est un UUID v4 stable, renseigne a la creation de la session » deplace vers TASK-8 sur decision utilisateur : la colonne et la migration relevent bien de cette tache, mais le fait de la renseigner appartient a la synchro.
 <!-- SECTION:NOTES:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+Le schema Room est exporte (app/schemas/1.json et 2.json committes), fallbackToDestructiveMigration retire au profit de addMigrations, et la migration 1 vers 2 ajoute en une fois les cinq colonnes dont la synchro a besoin. Verifie par MigrationTest instrumente sur emulateur API 28 : une base v1 contenant une session survit sans perte et le schema obtenu est confronte a 2.json, ce qui garantit que les DEFAULT de la migration correspondent aux @ColumnInfo des entites. Confirme aussi sur l appareil apres usage reel (PRAGMA user_version = 2).
+<!-- SECTION:FINAL_SUMMARY:END -->
