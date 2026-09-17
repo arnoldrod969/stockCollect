@@ -7,6 +7,7 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.TextView
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.view.isVisible
@@ -168,18 +169,29 @@ class ImportCatalogueFragment : Fragment() {
      * deux articles distincts se disputent un code-barre.
      */
     private fun afficherDialogConflits(analyse: AnalyseCatalogue) {
-        val detail = analyse.detailConflits()
-        val message = buildString {
+        // Seuls les vrais conflits sont détaillés, et au plus quelques-uns. AlertDialog n'accorde
+        // aux boutons que la place laissée par le contenu : avec les 9 conflits du catalogue en
+        // entier, les trois boutons s'empilaient puis passaient sous le bord de l'écran, et
+        // « Ignorer ces articles » devenait inatteignable. Le rapport complet est affiché après
+        // l'import, où il n'y a plus de décision à prendre.
+        val decisifs = analyse.detailDecisif()
+        val vue = layoutInflater.inflate(R.layout.dialog_conflits_codes_barres, null)
+        vue.findViewById<TextView>(R.id.tv_conflits).text = buildString {
             append(analyse.resumeConflits())
-            append('\n')
-            append(detail.take(5).joinToString("\n"))
-            if (detail.size > 5) append("\n… et ${detail.size - 5} autre(s)")
+            if (decisifs.isNotEmpty()) {
+                append("\n")
+                append(decisifs.take(MAX_CONFLITS_AFFICHES).joinToString("\n\n"))
+                if (decisifs.size > MAX_CONFLITS_AFFICHES) {
+                    append("\n\n… et ${decisifs.size - MAX_CONFLITS_AFFICHES} autre(s), ")
+                    append("listé(s) dans le rapport d'import.")
+                }
+            }
             append("\n\nQue faire ?")
         }
 
-        MaterialAlertDialogBuilder(requireContext())
+        val dialog = MaterialAlertDialogBuilder(requireContext())
             .setTitle("Codes-barres en conflit")
-            .setMessage(message)
+            .setView(vue)
             .setCancelable(false)
             .setPositiveButton("Importer sans code-barres") { _, _ ->
                 // Les articles écartés restent trouvables par recherche et comptables :
@@ -193,12 +205,26 @@ class ImportCatalogueFragment : Fragment() {
                 viewModel.annulerImport()
                 Snackbar.make(binding.root, "Import annulé, rien n'a été modifié.", Snackbar.LENGTH_LONG).show()
             }
-            .show()
+            .create()
+
+        // La hauteur fixe du ScrollView est posée ici, pas dans le XML : inflate() sans parent ne
+        // génère aucun LayoutParams pour la racine, donc le layout_height du fichier est perdu et
+        // la vue reprend un wrap_content qui chasse les boutons de l'écran. À l'affichage, la vue
+        // est attachée et ses LayoutParams sont ceux du conteneur du dialogue.
+        dialog.setOnShowListener {
+            vue.layoutParams = vue.layoutParams.apply {
+                height = (HAUTEUR_DETAIL_DP * resources.displayMetrics.density).toInt()
+            }
+            vue.requestLayout()
+        }
+        dialog.show()
     }
 
     private fun afficherDialogResultat(titre: String, message: String, erreurs: List<String>) {
         val detail = if (erreurs.isNotEmpty()) {
-            "$message\n\nD\u00e9tails erreurs :\n${erreurs.take(5).joinToString("\n")}" +
+            // \u00ab D\u00e9tails \u00bb et non \u00ab D\u00e9tails erreurs \u00bb : la liste m\u00eale les lignes rejet\u00e9es et les
+            // lignes recoll\u00e9es, qui sont au contraire des r\u00e9cup\u00e9rations r\u00e9ussies.
+            "$message\n\nD\u00e9tails :\n${erreurs.take(5).joinToString("\n")}" +
             if (erreurs.size > 5) "\n... et ${erreurs.size - 5} autres" else ""
         } else message
 
@@ -216,5 +242,13 @@ class ImportCatalogueFragment : Fragment() {
     override fun onDestroyView() {
         super.onDestroyView()
         _binding = null
+    }
+
+    companion object {
+        /** Laisse la place au titre et aux trois boutons empilés sur la plus petite tablette visée. */
+        private const val HAUTEUR_DETAIL_DP = 300
+
+        /** Au-delà, le dialogue de décision déborde ; le reste part dans le rapport d'import. */
+        private const val MAX_CONFLITS_AFFICHES = 4
     }
 }

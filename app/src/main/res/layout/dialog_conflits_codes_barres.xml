@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Tout le contenu du dialogue de conflits tient ici, résumé compris : rien ne passe par
+  setMessage. Un message long est mesuré hors de la zone défilable et pousse les trois boutons
+  sous le bord de l'écran — sur une tablette 800x1280 l'option du milieu devenait inatteignable,
+  puis les trois boutons ont disparu. Une hauteur fixe garantit qu'il reste toujours de la place
+  pour eux, quel que soit le nombre de conflits trouvés dans le catalogue.
+-->
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="300dp"
+    android:paddingStart="24dp"
+    android:paddingEnd="24dp">
+
+    <TextView android:id="@+id/tv_conflits"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:textSize="13sp"
+        android:textIsSelectable="true"
+        android:textColor="@color/on_surface_variant" />
+</ScrollView>

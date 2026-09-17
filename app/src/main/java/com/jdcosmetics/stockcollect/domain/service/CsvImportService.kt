@@ -193,6 +193,10 @@ class CsvImportService @Inject constructor(
                 nbMisAJour = misAJour,
                 nbIgnores = analyse.articles.size - aEcrire.size,
                 nbErreurs = analyse.erreurs.size,
+                // Les lignes recollées voyagent avec les erreurs faute d'un canal distinct, mais
+                // n'entrent ni dans nbErreurs ni dans le seuil des 10 % : ce sont des lignes
+                // rattrapées, pas rejetées. Le dialogue les présente donc sous « Détails », pas
+                // sous « Détails erreurs ».
                 erreurs = analyse.erreurs + analyse.lignesRecollees
             )
         } catch (e: Exception) {

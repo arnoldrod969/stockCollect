@@ -62,7 +62,16 @@ data class AnalyseCatalogue(
         }
     }
 
-    /** Détail ligne à ligne, pour le bouton « Voir le détail ». */
+    /**
+     * Les seuls conflits que l'utilisateur a besoin de lire pour trancher : deux produits
+     * réellement différents qui se disputent un code-barre. Les fiches en double sont comptées
+     * dans le résumé mais pas détaillées — elles n'influencent pas le choix, et les afficher
+     * toutes allonge le dialogue au point d'en chasser les boutons.
+     */
+    fun detailDecisif(): List<String> = detailConflits()
+        .filterIndexed { index, _ -> !conflits[index].memeProduit }
+
+    /** Détail ligne à ligne, pour le rapport affiché une fois l'import terminé. */
     fun detailConflits(): List<String> = conflits.map { conflit ->
         val nature = if (conflit.memeProduit) "fiche en double" else "CONFLIT RÉEL"
         val perdants = conflit.perdants.joinToString(", ") { "${it.codeProduit} (${it.nomProduit})" }
