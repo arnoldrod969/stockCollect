@@ -24,7 +24,12 @@ sealed class ImportUiState {
     data class ConflitsDetectes(val analyse: AnalyseCatalogue) : ImportUiState()
 
     data class Success(val result: ImportResult) : ImportUiState()
-    data class Error(val message: String) : ImportUiState()
+    /**
+     * [erreurs] porte les lignes fautives. Un import rejeté est justement le cas où l'utilisateur
+     * a besoin du détail — il doit corriger le fichier source — alors qu'il n'avait jusqu'ici
+     * qu'un message fugace sans aucune indication de ligne.
+     */
+    data class Error(val message: String, val erreurs: List<String> = emptyList()) : ImportUiState()
 }
 
 @HiltViewModel
@@ -73,7 +78,7 @@ class ImportCatalogueViewModel @Inject constructor(
             when (val analyse = importService.analyserCatalogue(uri)) {
                 is AnalyseResult.Echec -> {
                     analyseEnAttente = null
-                    _catalogueState.value = ImportUiState.Error(analyse.message)
+                    _catalogueState.value = ImportUiState.Error(analyse.message, analyse.erreurs)
                 }
                 is AnalyseResult.Pret -> {
                     if (analyse.analyse.aDesConflits) {

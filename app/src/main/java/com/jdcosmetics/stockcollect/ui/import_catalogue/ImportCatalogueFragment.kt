@@ -102,7 +102,11 @@ class ImportCatalogueFragment : Fragment() {
                 is ImportUiState.Error -> {
                     binding.progressCatalogue.isVisible = false
                     binding.btnChoisirCatalogue.isEnabled = true
-                    afficherErreur(state.message)
+                    // Dialogue modal, pas Snackbar : un import rejeté oblige à corriger le fichier
+                    // source, ce qui suppose de lire quelles lignes ont échoué. Un message qui
+                    // s'efface tout seul au bout de trois secondes, sans le détail, laissait le
+                    // magasinier devant un catalogue inchangé sans savoir pourquoi.
+                    afficherDialogResultat("Import refusé", state.message, state.erreurs)
                     viewModel.resetCatalogueState()
                 }
                 else -> {
