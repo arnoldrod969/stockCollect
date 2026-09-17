@@ -102,6 +102,12 @@ class SaisieFragment : Fragment() {
         })
 
         binding.btnCloturer.setOnClickListener {
+            // Une quantité en cours de saisie n'est écrite qu'à la perte de focus, et un bouton
+            // ne prend pas le focus en mode tactile : sans ce clearFocus, taper « 25 » puis
+            // clôturer verrouillait la session sur l'ancienne valeur. La confirmation qui suit
+            // laisse largement le temps à l'écriture de passer avant la clôture effective.
+            binding.root.findFocus()?.clearFocus()
+
             val nbLignes = lignesAdapter.itemCount
             if (nbLignes == 0) {
                 MaterialAlertDialogBuilder(requireContext())

@@ -16,6 +16,7 @@
     <EditText android:id="@+id/et_quantite" android:layout_width="56dp" android:layout_height="match_parent"
         android:gravity="center" android:textSize="16sp" android:textStyle="bold"
         android:inputType="numberDecimal" android:selectAllOnFocus="true"
+        android:imeOptions="actionDone" android:maxLines="1"
         android:background="@null"/>
     <com.google.android.material.button.MaterialButton android:id="@+id/btn_plus"
         android:layout_width="36dp" android:layout_height="36dp" android:text="+" android:textSize="18sp"

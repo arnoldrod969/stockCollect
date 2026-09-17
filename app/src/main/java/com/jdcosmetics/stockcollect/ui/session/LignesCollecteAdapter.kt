@@ -2,6 +2,7 @@ package com.jdcosmetics.stockcollect.ui.session
 
 import android.view.LayoutInflater
 import android.view.ViewGroup
+import android.view.inputmethod.EditorInfo
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
@@ -28,11 +29,18 @@ class LignesCollecteAdapter(
             binding.etQuantite.setText(FormatUtils.formatQuantite(ligne.quantite))
 
             binding.etQuantite.setOnFocusChangeListener { _, hasFocus ->
-                if (hasFocus) return@setOnFocusChangeListener
-                val courante = ligneCourante() ?: return@setOnFocusChangeListener
-                val q = binding.etQuantite.text?.toString()?.trim()?.toDoubleOrNull()
-                    ?: return@setOnFocusChangeListener
-                if (q >= 0 && q != courante.quantite) onQuantiteChanged(courante, q)
+                if (!hasFocus) validerSaisie()
+            }
+
+            // La perte de focus ne suffit pas : un MaterialButton ne prend pas le focus en mode
+            // tactile, donc taper « Clôturer » juste après avoir saisi une quantité la laissait
+            // dans le champ sans jamais l'écrire. Constaté sur l'émulateur : 25 tapé, 1.0 en base.
+            // La touche de validation du clavier donne une seconde issue, plus naturelle.
+            binding.etQuantite.setOnEditorActionListener { _, actionId, _ ->
+                if (actionId == EditorInfo.IME_ACTION_DONE || actionId == EditorInfo.IME_ACTION_NEXT) {
+                    validerSaisie()
+                }
+                false   // false : on laisse le clavier se fermer comme d'habitude
             }
 
             binding.btnMoins.setOnClickListener {
@@ -49,6 +57,13 @@ class LignesCollecteAdapter(
                 val courante = ligneCourante() ?: return@setOnClickListener
                 onSupprimer(courante)
             }
+        }
+
+        /** Écrit la quantité tapée, si elle est lisible et différente de celle déjà enregistrée. */
+        private fun validerSaisie() {
+            val courante = ligneCourante() ?: return
+            val q = binding.etQuantite.text?.toString()?.trim()?.toDoubleOrNull() ?: return
+            if (q >= 0 && q != courante.quantite) onQuantiteChanged(courante, q)
         }
 
         /**
