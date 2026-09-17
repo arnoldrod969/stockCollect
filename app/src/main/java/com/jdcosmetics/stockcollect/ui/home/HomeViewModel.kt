@@ -7,6 +7,7 @@ import androidx.lifecycle.viewModelScope
 import com.jdcosmetics.stockcollect.data.db.dao.ArticleDao
 import com.jdcosmetics.stockcollect.data.db.dao.SessionDao
 import com.jdcosmetics.stockcollect.data.db.entity.SessionEntity
+import com.jdcosmetics.stockcollect.data.prefs.ParametresSync
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -15,8 +16,13 @@ import javax.inject.Inject
 @HiltViewModel
 class HomeViewModel @Inject constructor(
     private val sessionDao: SessionDao,
-    private val articleDao: ArticleDao
+    private val articleDao: ArticleDao,
+    private val parametres: ParametresSync
 ) : ViewModel() {
+
+    private val _magasinConfigure = MutableLiveData<String?>(null)
+    /** Libellé du magasin réglé, ou `null` tant que la synchro n'est pas paramétrée. */
+    val magasinConfigure: LiveData<String?> = _magasinConfigure
 
     private val _nbSessions = MutableLiveData(0)
     val nbSessions: LiveData<Int> = _nbSessions
@@ -32,7 +38,16 @@ class HomeViewModel @Inject constructor(
 
     init { charger() }
 
+    /**
+     * Relu à chaque retour sur l'accueil : les paramètres changent dans un autre écran, et un
+     * `init` seul afficherait encore l'ancien état après un aller-retour.
+     */
+    fun rafraichirParametres() {
+        _magasinConfigure.value = parametres.magasin.takeIf { parametres.estConfigure }
+    }
+
     private fun charger() {
+        rafraichirParametres()
         viewModelScope.launch {
             _nbSessions.value = sessionDao.count()
             _nbArticles.value = articleDao.count()

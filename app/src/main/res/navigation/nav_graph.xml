@@ -20,6 +20,8 @@
             app:destination="@id/historiqueFragment" />
         <action android:id="@+id/action_home_to_import"
             app:destination="@id/importCatalogueFragment" />
+        <action android:id="@+id/action_home_to_parametres"
+            app:destination="@id/parametresFragment" />
         <action android:id="@+id/action_home_to_saisie"
             app:destination="@id/saisieFragment" />
     </fragment>
@@ -109,6 +111,15 @@
         android:name="com.jdcosmetics.stockcollect.ui.import_catalogue.ImportCatalogueFragment"
         android:label="Import catalogue"
         tools:layout="@layout/fragment_import_catalogue">
+        <argument android:name="dummy" app:argType="string" android:defaultValue="" />
+    </fragment>
+
+    <!-- Paramètres de synchro -->
+    <fragment
+        android:id="@+id/parametresFragment"
+        android:name="com.jdcosmetics.stockcollect.ui.parametres.ParametresFragment"
+        android:label="Paramètres"
+        tools:layout="@layout/fragment_parametres">
         <argument android:name="dummy" app:argType="string" android:defaultValue="" />
     </fragment>
 

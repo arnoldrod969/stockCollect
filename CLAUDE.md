@@ -94,7 +94,7 @@ Easy to break, and not visible from any single file.
   - **No UTF-8 BOM, deliberately.** The file is consumed by a third-party system that does not tolerate it. Excel on Windows will therefore show accented names and the `Quantité` header as mojibake — that is expected, not a bug to fix. Do not reintroduce a BOM.
   - The flat, unquoted format is likewise assumed: no product name in the catalogue contains a `"`.
 - Filename comes from `DateUtils.toFileName()` → `STOCK_ddMMyyyy_HHmm.csv`, written to a user-chosen SAF URI.
-- Sample files are committed at the repo root (`catalogue17022025.csv`, `art_codebarre.csv`, `produits.csv`, `STOCK_10062026_1210.csv`) and work as import fixtures.
+- Sample files sit at the repo root (`catalogue17022025.csv`, `art_codebarre.csv`, `produits.csv`, `STOCK_10062026_1210.csv`) and work as import fixtures. They are **untracked on purpose** — real JD Cosmetics product data, prices included — so `git status` always lists them and a fresh clone won't have them. Don't commit them, and don't "fix" the dirty working tree by adding them. The unit tests don't need them: `CsvParserTest` pins the tricky real rows as inline strings.
 
 ## Language conventions
 

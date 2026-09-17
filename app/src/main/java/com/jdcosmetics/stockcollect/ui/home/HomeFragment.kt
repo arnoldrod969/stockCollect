@@ -48,6 +48,9 @@ class HomeFragment : Fragment() {
         binding.rowImport.setOnClickListener {
             findNavController().navigate(R.id.action_home_to_import)
         }
+        binding.rowParametres.setOnClickListener {
+            findNavController().navigate(R.id.action_home_to_parametres)
+        }
         binding.cardReprendreBrouillon.setOnClickListener {
             val idSession = viewModel.lastBrouillon.value?.idSession ?: return@setOnClickListener
             val action = HomeFragmentDirections.actionHomeToSaisie(idSession)
@@ -71,6 +74,10 @@ class HomeFragment : Fragment() {
             binding.tvDernierImport.text = if (date != null) "MAJ : ${DateUtils.toDisplayDate(date)}"
             else "Aucun catalogue importé"
         }
+        viewModel.magasinConfigure.observe(viewLifecycleOwner) { magasin ->
+            binding.tvEtatParametres.text =
+                if (magasin != null) "Magasin : $magasin" else "Non configuré"
+        }
         viewModel.lastBrouillon.observe(viewLifecycleOwner) { brouillon ->
             if (brouillon != null) {
                 binding.cardReprendreBrouillon.isVisible = true
@@ -80,6 +87,13 @@ class HomeFragment : Fragment() {
                 binding.cardReprendreBrouillon.isVisible = false
             }
         }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        // Les paramètres se modifient dans un autre écran : sans cette relecture, l'accueil
+        // afficherait encore « Non configuré » au retour.
+        viewModel.rafraichirParametres()
     }
 
     override fun onDestroyView() {
