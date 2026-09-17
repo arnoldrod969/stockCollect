@@ -9,7 +9,10 @@ import com.jdcosmetics.stockcollect.data.db.entity.*
  * Base de données Room — StockCollect Mobile
  *
  * Version 1 : schéma initial avec 5 tables.
- * Incrémenter la version + ajouter une migration à chaque changement de schéma.
+ * Version 2 : colonnes de synchronisation WiFi sur `sessions` (cf. [MIGRATION_1_2]).
+ *
+ * Incrémenter la version + ajouter une migration dans Migrations.kt à chaque changement de
+ * schéma, et committer le JSON généré dans app/schemas/.
  */
 @Database(
     entities = [
@@ -19,7 +22,7 @@ import com.jdcosmetics.stockcollect.data.db.entity.*
         LigneCollecteEntity::class,
         ExportEntity::class
     ],
-    version = 1,
+    version = 2,
     exportSchema = true   // Exporte le schéma JSON pour audit (dans app/schemas/)
 )
 abstract class StockCollectDatabase : RoomDatabase() {

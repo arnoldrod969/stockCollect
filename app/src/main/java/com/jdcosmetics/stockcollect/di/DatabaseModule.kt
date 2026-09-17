@@ -2,6 +2,7 @@ package com.jdcosmetics.stockcollect.di
 
 import android.content.Context
 import androidx.room.Room
+import com.jdcosmetics.stockcollect.data.db.MIGRATIONS
 import com.jdcosmetics.stockcollect.data.db.StockCollectDatabase
 import com.jdcosmetics.stockcollect.data.db.dao.*
 import dagger.Module
@@ -23,7 +24,10 @@ object DatabaseModule {
             StockCollectDatabase::class.java,
             "stockcollect.db"
         )
-            .fallbackToDestructiveMigration() // À remplacer par des migrations explicites en prod
+            // Pas de fallbackToDestructiveMigration : il effaçait les sessions collectées sur la
+            // tablette à chaque évolution du schéma, sans rien dire. Une migration manquante fait
+            // maintenant échouer l'ouverture de la base — bruyant, mais récupérable.
+            .addMigrations(*MIGRATIONS)
             .build()
     }
 
