@@ -54,8 +54,7 @@ class CsvExportService @Inject constructor(
                     ?: return@withContext ExportResult.Erreur("Impossible d'ouvrir le fichier de destination.")
 
                 OutputStreamWriter(outputStream, Charsets.UTF_8).use { writer ->
-                    writer.write(Constants.UTF8_BOM)
-                    writer.write("${Constants.EXPORT_COL_CODE_BARRE},${Constants.EXPORT_COL_CODE_PRODUIT},${Constants.EXPORT_COL_NOM_PRODUIT},${Constants.EXPORT_COL_QUANTITE}\n")
+                    writer.write("${Constants.EXPORT_COL_CODE_BARRE},${Constants.EXPORT_COL_CODE_PRODUIT},${Constants.EXPORT_COL_NOM_PRODUIT},${Constants.EXPORT_COL_QUANTITE}\r\n")
 
                     lignes.forEach { ligne ->
                         val codeBarre = ligne.codeBarreScanne
@@ -64,11 +63,10 @@ class CsvExportService @Inject constructor(
 
                         val nomProduit = ligne.nomProduitSnap
                             .replace(",", " ")
-                            .replace("\"", "\"\"")
 
                         val quantite = FormatUtils.formatQuantite(ligne.quantite)
 
-                        writer.write("$codeBarre,${ligne.codeProduit},\"$nomProduit\",$quantite\n")
+                        writer.write("$codeBarre,${ligne.codeProduit},$nomProduit,$quantite\r\n")
                     }
                 }
 
