@@ -16,6 +16,8 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.snackbar.Snackbar
 import com.jdcosmetics.stockcollect.R
 import com.jdcosmetics.stockcollect.databinding.FragmentImportCatalogueBinding
+import com.jdcosmetics.stockcollect.domain.service.AnalyseCatalogue
+import com.jdcosmetics.stockcollect.domain.service.ResolutionConflit
 import com.jdcosmetics.stockcollect.util.DateUtils
 import dagger.hilt.android.AndroidEntryPoint
 
@@ -85,6 +87,11 @@ class ImportCatalogueFragment : Fragment() {
                     binding.progressCatalogue.isVisible = true
                     binding.btnChoisirCatalogue.isEnabled = false
                 }
+                is ImportUiState.ConflitsDetectes -> {
+                    binding.progressCatalogue.isVisible = false
+                    binding.btnChoisirCatalogue.isEnabled = true
+                    afficherDialogConflits(state.analyse)
+                }
                 is ImportUiState.Success -> {
                     binding.progressCatalogue.isVisible = false
                     binding.btnChoisirCatalogue.isEnabled = true
@@ -150,6 +157,43 @@ class ImportCatalogueFragment : Fragment() {
             type = "*/*"
         }
         launcher.launch(intent)
+    }
+
+    /**
+     * Règle de gestion : un code-barre n'appartient qu'à un seul article. Quand le fichier la
+     * viole, rien n'a encore été écrit — c'est à l'utilisateur de dire quoi faire.
+     *
+     * Les décomptes par famille sont affichés parce qu'aucune option n'est bonne dans les deux cas :
+     * « ignorer » convient à une fiche dupliquée, mais ferait disparaître un produit réel quand
+     * deux articles distincts se disputent un code-barre.
+     */
+    private fun afficherDialogConflits(analyse: AnalyseCatalogue) {
+        val detail = analyse.detailConflits()
+        val message = buildString {
+            append(analyse.resumeConflits())
+            append('\n')
+            append(detail.take(5).joinToString("\n"))
+            if (detail.size > 5) append("\n… et ${detail.size - 5} autre(s)")
+            append("\n\nQue faire ?")
+        }
+
+        MaterialAlertDialogBuilder(requireContext())
+            .setTitle("Codes-barres en conflit")
+            .setMessage(message)
+            .setCancelable(false)
+            .setPositiveButton("Importer sans code-barres") { _, _ ->
+                // Les articles écartés restent trouvables par recherche et comptables :
+                // ils perdent seulement la possibilité d'être scannés.
+                viewModel.resoudreConflits(ResolutionConflit.IMPORTER_SANS_CODE_BARRE)
+            }
+            .setNeutralButton("Ignorer ces articles") { _, _ ->
+                viewModel.resoudreConflits(ResolutionConflit.IGNORER_ARTICLES)
+            }
+            .setNegativeButton("Annuler l'import") { _, _ ->
+                viewModel.annulerImport()
+                Snackbar.make(binding.root, "Import annulé, rien n'a été modifié.", Snackbar.LENGTH_LONG).show()
+            }
+            .show()
     }
 
     private fun afficherDialogResultat(titre: String, message: String, erreurs: List<String>) {

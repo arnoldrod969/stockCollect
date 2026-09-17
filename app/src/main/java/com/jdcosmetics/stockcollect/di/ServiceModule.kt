@@ -1,6 +1,7 @@
 package com.jdcosmetics.stockcollect.di
 
 import android.content.Context
+import com.jdcosmetics.stockcollect.data.db.StockCollectDatabase
 import com.jdcosmetics.stockcollect.data.db.dao.ArtCodebarreDao
 import com.jdcosmetics.stockcollect.data.db.dao.ArticleDao
 import com.jdcosmetics.stockcollect.data.db.dao.LigneCollecteDao
@@ -25,9 +26,10 @@ object ServiceModule {
     @Singleton
     fun provideCsvImportService(
         @ApplicationContext context: Context,
+        db: StockCollectDatabase,
         articleDao: ArticleDao,
         artCodebarreDao: ArtCodebarreDao
-    ): CsvImportService = CsvImportService(context, articleDao, artCodebarreDao)
+    ): CsvImportService = CsvImportService(context, db, articleDao, artCodebarreDao)
 
     @Provides
     @Singleton

@@ -6,7 +6,63 @@ import com.jdcosmetics.stockcollect.util.Constants
 import java.io.BufferedReader
 import java.io.InputStreamReader
 
+/**
+ * Une ligne du catalogue, colonnes déjà réparties. `recollee` signale que le nom du produit
+ * contenait une virgule non échappée et a dû être reconstitué.
+ */
+data class LigneCatalogue(
+    val codeProduit: String?,
+    val codeBarre: String?,
+    val nomProduit: String?,
+    val quantite: String?,
+    val prix: String?,
+    val recollee: Boolean
+)
+
 object CsvParser {
+
+    /**
+     * Répartit les colonnes d'une ligne du catalogue.
+     *
+     * Le fichier source n'échappe pas les virgules contenues dans les noms de produits :
+     * « AL-NUAIM WHITE ORCHID 9,9ML » produit 7 colonnes au lieu de 6. Lire aveuglément les index
+     * fixes donnait alors un nom tronqué, une quantité non numérique ramenée à 0 et un prix pris
+     * dans la mauvaise colonne — **sans la moindre erreur signalée**.
+     *
+     * La structure reste pourtant déterministe : les deux dernières colonnes sont toujours la
+     * quantité et le prix, donc tout le surplus appartient au nom.
+     *
+     * Le recollage se fait avec une virgule nue : « 9 » + « 9ML » redonne « 9,9ML ». Les espaces
+     * qui entouraient éventuellement la virgule d'origine sont perdus (parseLigne ayant trimmé
+     * chaque champ) — différence cosmétique, assumée.
+     */
+    fun mapperCatalogue(colonnes: List<String>): LigneCatalogue {
+        val nbAttendu = Constants.COL_CATALOGUE_NB_ATTENDU
+
+        if (colonnes.size >= nbAttendu) {
+            return LigneCatalogue(
+                codeProduit = colonnes.getOrNull(Constants.COL_CATALOGUE_CODE_PRODUIT),
+                codeBarre = colonnes.getOrNull(Constants.COL_CATALOGUE_CODE_BARRE),
+                // Du début du nom jusqu'à l'avant-dernière colonne exclue.
+                nomProduit = colonnes
+                    .subList(Constants.COL_CATALOGUE_NOM_PRODUIT, colonnes.size - 2)
+                    .joinToString(","),
+                quantite = colonnes[colonnes.size - 2],
+                prix = colonnes[colonnes.size - 1],
+                recollee = colonnes.size > nbAttendu
+            )
+        }
+
+        // Ligne courte (4 ou 5 colonnes) : pas de surplus possible, index fixes.
+        return LigneCatalogue(
+            codeProduit = colonnes.getOrNull(Constants.COL_CATALOGUE_CODE_PRODUIT),
+            codeBarre = colonnes.getOrNull(Constants.COL_CATALOGUE_CODE_BARRE),
+            nomProduit = colonnes.getOrNull(Constants.COL_CATALOGUE_NOM_PRODUIT),
+            quantite = colonnes.getOrNull(Constants.COL_CATALOGUE_QUANTITE),
+            prix = colonnes.getOrNull(Constants.COL_CATALOGUE_PRIX),
+            recollee = false
+        )
+    }
 
     fun detecterSeparateur(premiereLigne: String): Char {
         val nbVirgules = premiereLigne.count { it == Constants.CSV_SEPARATEUR_VIRGULE }
