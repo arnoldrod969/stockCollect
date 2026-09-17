@@ -20,20 +20,48 @@ class LignesCollecteAdapter(
         fun bind(ligne: LigneCollecteEntity) {
             binding.tvNomProduit.text = ligne.nomProduitSnap
             binding.tvCodeProduit.text = ligne.codeProduit
-            binding.tvQuantite.text = FormatUtils.formatQuantite(ligne.quantite)
+
+            // Détacher le listener AVANT d'écrire la valeur : s'il était encore branché sur la
+            // ligne précédente, la perte de focus qui suit le recyclage lui ferait lire la
+            // nouvelle quantité et l'écrire sur l'ancien article.
+            binding.etQuantite.onFocusChangeListener = null
+            binding.etQuantite.setText(FormatUtils.formatQuantite(ligne.quantite))
+
+            binding.etQuantite.setOnFocusChangeListener { _, hasFocus ->
+                if (hasFocus) return@setOnFocusChangeListener
+                val courante = ligneCourante() ?: return@setOnFocusChangeListener
+                val q = binding.etQuantite.text?.toString()?.trim()?.toDoubleOrNull()
+                    ?: return@setOnFocusChangeListener
+                if (q >= 0 && q != courante.quantite) onQuantiteChanged(courante, q)
+            }
 
             binding.btnMoins.setOnClickListener {
-                val nouvelle = maxOf(0.0, ligne.quantite - 1)
-                onQuantiteChanged(ligne, nouvelle)
+                val courante = ligneCourante() ?: return@setOnClickListener
+                onQuantiteChanged(courante, maxOf(0.0, courante.quantite - 1))
             }
 
             binding.btnPlus.setOnClickListener {
-                onQuantiteChanged(ligne, ligne.quantite + 1)
+                val courante = ligneCourante() ?: return@setOnClickListener
+                onQuantiteChanged(courante, courante.quantite + 1)
             }
 
             binding.btnSupprimer.setOnClickListener {
-                onSupprimer(ligne)
+                val courante = ligneCourante() ?: return@setOnClickListener
+                onSupprimer(courante)
             }
+        }
+
+        /**
+         * Relit la ligne par la position courante du ViewHolder plutôt que par la capture faite
+         * au bind : entre les deux, la vue a pu être recyclée sur un autre article.
+         *
+         * `adapterPosition` et non `bindingAdapterPosition` : recyclerview résout en 1.1.0 ici,
+         * où le second n'existe pas encore. Sans ConcatAdapter, les deux sont équivalents.
+         */
+        private fun ligneCourante(): LigneCollecteEntity? {
+            val position = adapterPosition
+            if (position == RecyclerView.NO_POSITION || position >= itemCount) return null
+            return getItem(position)
         }
     }
 

@@ -6,6 +6,7 @@ import android.text.TextWatcher
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.EditText
 import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
@@ -54,9 +55,24 @@ class SaisieFragment : Fragment() {
         }
 
         rechercheAdapter = ArticleRechercheAdapter { article ->
-            viewModel.ajouterLigne(article, null, 1.0)
-            binding.etRecherche.setText("")
-            binding.rvRecherche.isVisible = false
+            val input = EditText(requireContext()).apply {
+                inputType = android.text.InputType.TYPE_CLASS_NUMBER or android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL
+                setText("1.0")
+                setSelectAllOnFocus(true)
+                hint = "Quantité"
+            }
+            MaterialAlertDialogBuilder(requireContext())
+                .setTitle("Ajouter au panier")
+                .setMessage("Article\u00a0: ${article.nomProduit}\nCode\u00a0: ${article.codeProduit}")
+                .setView(input)
+                .setPositiveButton("Ajouter") { _, _ ->
+                    val q = input.text.toString().toDoubleOrNull() ?: 1.0
+                    viewModel.ajouterLigne(article, null, q)
+                    binding.etRecherche.setText("")
+                    binding.rvRecherche.isVisible = false
+                }
+                .setNegativeButton("Annuler", null)
+                .show()
         }
         binding.rvRecherche.apply {
             layoutManager = LinearLayoutManager(requireContext())

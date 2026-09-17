@@ -13,8 +13,10 @@
     <com.google.android.material.button.MaterialButton android:id="@+id/btn_moins"
         android:layout_width="36dp" android:layout_height="36dp" android:text="−" android:textSize="18sp"
         android:padding="0dp" app:cornerRadius="8dp"/>
-    <TextView android:id="@+id/tv_quantite" android:layout_width="48dp" android:layout_height="wrap_content"
-        android:gravity="center" android:textSize="16sp" android:textStyle="bold"/>
+    <EditText android:id="@+id/et_quantite" android:layout_width="56dp" android:layout_height="match_parent"
+        android:gravity="center" android:textSize="16sp" android:textStyle="bold"
+        android:inputType="numberDecimal" android:selectAllOnFocus="true"
+        android:background="@null"/>
     <com.google.android.material.button.MaterialButton android:id="@+id/btn_plus"
         android:layout_width="36dp" android:layout_height="36dp" android:text="+" android:textSize="18sp"
         android:padding="0dp" app:cornerRadius="8dp"/>

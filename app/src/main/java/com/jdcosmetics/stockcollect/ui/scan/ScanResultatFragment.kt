@@ -27,8 +27,6 @@ class ScanResultatFragment : Fragment() {
     private val saisieViewModel: SaisieViewModel by activityViewModels()
     private val args: ScanResultatFragmentArgs by navArgs()
 
-    private var quantite = 1.0
-
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?
     ): View {
@@ -55,19 +53,24 @@ class ScanResultatFragment : Fragment() {
     }
 
     private fun setupListeners() {
+        // Pas de TextWatcher : le champ est la source de vérité, lu au moment du clic.
+        // Le suivre frappe par frappe faisait retomber la quantité à 0 sur une saisie
+        // intermédiaire (« 1. », champ vidé pour être retapé), sans que rien ne l'indique.
+
         binding.btnMoins.setOnClickListener {
-            if (quantite > 0) {
-                quantite -= 1
-                majAffichageQuantite()
-            }
+            ecrireQuantite(maxOf(0.0, (quantiteSaisie() ?: 0.0) - 1))
         }
 
         binding.btnPlus.setOnClickListener {
-            quantite += 1
-            majAffichageQuantite()
+            ecrireQuantite((quantiteSaisie() ?: 0.0) + 1)
         }
 
         binding.btnAjouter.setOnClickListener {
+            val quantite = quantiteSaisie()
+            if (quantite == null) {
+                binding.etQuantite.error = "Quantité invalide"
+                return@setOnClickListener
+            }
             val state = scanViewModel.uiState.value?.peek()
             if (state is ScanUiState.Resolu) {
                 saisieViewModel.ajouterLigne(
@@ -100,7 +103,7 @@ class ScanResultatFragment : Fragment() {
         binding.tvCodeBarreScanne.text = "CB scanné : ${result.codeBarre}"
         binding.tvViaTableCb.isVisible = result.viaTableCB
 
-        majAffichageQuantite()
+        ecrireQuantite(QUANTITE_PAR_DEFAUT)
     }
 
     private fun afficherEchec(codeBarre: String) {
@@ -110,12 +113,23 @@ class ScanResultatFragment : Fragment() {
         binding.tvCodeBarreInconnu.text = codeBarre
     }
 
-    private fun majAffichageQuantite() {
-        binding.tvQuantite.text = FormatUtils.formatQuantite(quantite)
+    /** Quantité saisie, ou null si le champ ne contient pas un nombre positif exploitable. */
+    private fun quantiteSaisie(): Double? =
+        binding.etQuantite.text?.toString()?.trim()?.toDoubleOrNull()?.takeIf { it >= 0 }
+
+    private fun ecrireQuantite(quantite: Double) {
+        binding.etQuantite.error = null
+        binding.etQuantite.setText(FormatUtils.formatQuantite(quantite))
+        binding.etQuantite.setSelection(binding.etQuantite.text?.length ?: 0)
     }
 
     override fun onDestroyView() {
         super.onDestroyView()
         _binding = null
+    }
+
+    private companion object {
+        /** Un scan vaut une unité tant que l'opérateur n'en décide autrement. */
+        const val QUANTITE_PAR_DEFAUT = 1.0
     }
 }

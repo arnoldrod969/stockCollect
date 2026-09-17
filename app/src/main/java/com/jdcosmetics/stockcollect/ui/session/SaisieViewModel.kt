@@ -9,6 +9,7 @@ import com.jdcosmetics.stockcollect.data.db.entity.LigneCollecteEntity
 import com.jdcosmetics.stockcollect.data.db.entity.SessionEntity
 import com.jdcosmetics.stockcollect.data.repository.SessionRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -17,6 +18,17 @@ sealed class SaisieUiState {
     object Loading : SaisieUiState()
     data class SessionCreee(val idSession: Long) : SaisieUiState()
     object SessionCloturee : SaisieUiState()
+
+    /**
+     * Un brouillon existe, mais d'un autre type que celui demandé. Reprendre en silence
+     * ferait compter un inventaire sous un mouvement de stock : c'est à l'utilisateur de trancher.
+     */
+    data class BrouillonAutreType(
+        val idSession: Long,
+        val typeBrouillon: String,
+        val typeDemande: String
+    ) : SaisieUiState()
+
     data class Erreur(val message: String) : SaisieUiState()
 }
 
@@ -36,6 +48,9 @@ class SaisieViewModel @Inject constructor(
     private var _lignes = MutableLiveData<List<LigneCollecteEntity>>(emptyList())
     val lignes: LiveData<List<LigneCollecteEntity>> = _lignes
 
+    /** Collecteur du Flow des lignes. Annulé avant toute relance — voir observerLignes. */
+    private var lignesJob: Job? = null
+
     private val _searchResults = MutableLiveData<List<ArticleEntity>>(emptyList())
     val searchResults: LiveData<List<ArticleEntity>> = _searchResults
 
@@ -45,21 +60,44 @@ class SaisieViewModel @Inject constructor(
             try {
                 val brouillonExistant = repository.getLastBrouillon()
                 if (brouillonExistant != null) {
-                    _idSessionCourante = brouillonExistant.idSession
-                    chargerSession(brouillonExistant.idSession)
-                    observerLignes(brouillonExistant.idSession)
-                    _uiState.value = SaisieUiState.SessionCreee(brouillonExistant.idSession)
+                    // Un brouillon d'un autre type ne se reprend pas en silence : le lieu et les
+                    // observations saisis seraient jetés, et la collecte irait grossir une session
+                    // que l'utilisateur n'a pas choisie.
+                    if (brouillonExistant.typeOperation != typeOperation) {
+                        _uiState.value = SaisieUiState.BrouillonAutreType(
+                            idSession = brouillonExistant.idSession,
+                            typeBrouillon = brouillonExistant.typeOperation,
+                            typeDemande = typeOperation
+                        )
+                        return@launch
+                    }
+                    reprendre(brouillonExistant.idSession)
                     return@launch
                 }
                 val id = repository.creerSession(typeOperation, lieu, observations)
-                _idSessionCourante = id
-                chargerSession(id)
-                observerLignes(id)
-                _uiState.value = SaisieUiState.SessionCreee(id)
+                reprendre(id)
             } catch (e: Exception) {
                 _uiState.value = SaisieUiState.Erreur(e.message ?: "Erreur création session")
             }
         }
+    }
+
+    /** L'utilisateur a choisi de reprendre le brouillon existant malgré son type différent. */
+    fun reprendreBrouillon(idSession: Long) {
+        viewModelScope.launch {
+            try {
+                reprendre(idSession)
+            } catch (e: Exception) {
+                _uiState.value = SaisieUiState.Erreur(e.message ?: "Erreur reprise session")
+            }
+        }
+    }
+
+    private suspend fun reprendre(idSession: Long) {
+        _idSessionCourante = idSession
+        chargerSession(idSession)
+        observerLignes(idSession)
+        _uiState.value = SaisieUiState.SessionCreee(idSession)
     }
 
     fun chargerSessionExistante(idSession: Long) {
@@ -74,8 +112,14 @@ class SaisieViewModel @Inject constructor(
         _sessionCourante.value = repository.getById(id)
     }
 
+    /**
+     * Le Flow Room ne se termine jamais : sans annulation, chaque appel empilerait un collecteur
+     * de plus. Ce ViewModel étant partagé par activityViewModels() sur quatre écrans, les
+     * collecteurs survivaient jusqu'à la destruction de l'Activity, à republier la même liste.
+     */
     private fun observerLignes(idSession: Long) {
-        viewModelScope.launch {
+        lignesJob?.cancel()
+        lignesJob = viewModelScope.launch {
             repository.getLignes(idSession).collect { liste ->
                 _lignes.value = liste
             }

@@ -138,15 +138,18 @@
                             android:textSize="20sp"
                             app:cornerRadius="12dp" />
 
-                        <TextView
-                            android:id="@+id/tv_quantite"
+                        <EditText
+                            android:id="@+id/et_quantite"
                             android:layout_width="80dp"
                             android:layout_height="wrap_content"
                             android:text="1.0"
                             android:textSize="32sp"
                             android:textStyle="bold"
                             android:gravity="center"
-                            android:textColor="@color/on_surface" />
+                            android:textColor="@color/on_surface"
+                            android:inputType="numberDecimal"
+                            android:selectAllOnFocus="true"
+                            android:background="@null" />
 
                         <com.google.android.material.button.MaterialButton
                             android:id="@+id/btn_plus"

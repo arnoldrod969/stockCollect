@@ -83,7 +83,7 @@ class SessionRepository @Inject constructor(
     }
 
     suspend fun searchArticles(query: String): List<ArticleEntity> =
-        articleDao.searchByNomSync(query)
+        articleDao.searchAllSync(query)
 
     suspend fun getNbArticles(): Int = articleDao.count()
 }
