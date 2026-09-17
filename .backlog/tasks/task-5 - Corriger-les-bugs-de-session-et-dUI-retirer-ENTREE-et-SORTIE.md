@@ -4,7 +4,7 @@ title: 'Corriger les bugs de session et d''UI, retirer ENTREE et SORTIE'
 status: In Progress
 assignee: []
 created_date: '2026-09-17 15:53'
-updated_date: '2026-09-17 16:21'
+updated_date: '2026-09-17 17:53'
 labels: []
 dependencies: []
 ordinal: 9000
@@ -31,16 +31,26 @@ Enfin, le contrat API n'accepte que INVENTAIRE et COMMANDE : une session ENTREE 
 - [ ] #1 observerLignes annule le Job précédent avant d'en relancer un
 - [ ] #2 creerSession ne reprend un brouillon que si son typeOperation correspond, sinon l'utilisateur choisit
 - [ ] #3 L'édition de quantité dans la liste ne peut plus committer sur la mauvaise ligne après recyclage
-- [ ] #4 Une saisie intermédiaire dans le champ quantité n'écrase plus la valeur par 0
-- [ ] #5 ENTREE et SORTIE ne sont plus proposés à la création de session
+- [x] #4 Une saisie intermédiaire dans le champ quantité n'écrase plus la valeur par 0
+- [x] #5 ENTREE et SORTIE ne sont plus proposés à la création de session
 - [ ] #6 Les constantes TypeOperation.ENTREE et SORTIE sont conservées et les sessions existantes de ces types restent lisibles dans l'Historique
-- [ ] #7 Aucune migration ni suppression des sessions ENTREE/SORTIE déjà en base
+- [x] #7 Aucune migration ni suppression des sessions ENTREE/SORTIE déjà en base
 <!-- AC:END -->
 
 ## Implementation Notes
 
 <!-- SECTION:NOTES:BEGIN -->
 Fait : lignesJob annulé avant relance dans SaisieViewModel.observerLignes ; nouvel état SaisieUiState.BrouillonAutreType avec dialogue de choix dans NouvelleSessionFragment ; LignesCollecteAdapter relit la ligne par adapterPosition et détache le listener avant setText ; ScanResultatFragment ne suit plus le champ frappe par frappe, la quantité est lue au clic avec message d'erreur si illisible.
+
+Verification runtime sur emulateur API 28 :
+- AC4 : quantite 25 tapee au clavier puis cloture immediate -> 25.0 en base, les deux autres lignes restent a 13.0 et 1.0. Le scenario echouait avant (1.0 conserve) : la saisie n etait ecrite qu a la perte de focus, et un MaterialButton ne prend pas le focus en mode tactile. Corrige par imeOptions actionDone + editorActionListener + clearFocus avant cloture (commit 3c006bd).
+- AC5 : l ecran Nouvelle Session n affiche plus que la carte Inventaire.
+- AC7 : aucune migration ni suppression touchant type_operation ; les chips Entree et Sortie subsistent dans l Historique.
+
+Non coches, faute de preuve objective :
+- AC1 et AC2 : correction ecrite mais non exercee. Avec un seul type creable, produire un conflit de type sur reprise de brouillon demande de fabriquer une session ENTREE a la main en base.
+- AC3 : pas de fuite constatee entre lignes, mais avec 3 lignes le RecyclerView ne recycle pas — le scenario de recyclage reste a exercer sur une session longue.
+- AC6 : constantes et libelles conserves, mais aucune session ENTREE/SORTIE n existe sur l appareil pour le prouver a l ecran.
 <!-- SECTION:NOTES:END -->
 
 ## Comments
