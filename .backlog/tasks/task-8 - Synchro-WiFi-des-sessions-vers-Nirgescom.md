@@ -1,10 +1,10 @@
 ---
 id: TASK-8
 title: Synchro WiFi des sessions vers Nirgescom
-status: In Progress
+status: Done
 assignee: []
 created_date: '2026-09-17 15:54'
-updated_date: '2026-09-18 15:27'
+updated_date: '2026-09-18 15:54'
 labels: []
 dependencies:
   - TASK-4
@@ -32,13 +32,13 @@ Points de vigilance connus :
 <!-- AC:BEGIN -->
 - [x] #1 Le manifeste déclare INTERNET et ACCESS_NETWORK_STATE avec un network_security_config autorisant l'hôte du LAN en clair
 - [x] #2 Un écran Paramètres permet de saisir URL, clé d'API, magasin et identifiant tablette, et de tester la connexion via GET /health
-- [ ] #3 Une session CLOTUREE peut être envoyée par POST /documents et passe à SYNCHRONISEE sur 201
-- [ ] #4 Une erreur réseau ou 5xx passe la session à ECHEC_SYNC et le réessai est possible
-- [ ] #5 Le renvoi d'une session déjà synchronisée est traité comme un succès
-- [ ] #6 hash_ligne n'est pas envoyé dans le corps de la requête
-- [ ] #7 L'Historique peut interroger GET /documents/{session_id} pour afficher l'état Nirgescom
-- [ ] #8 L'export CSV reste disponible sur une session CLOTUREE, indépendamment de la synchro
-- [ ] #9 uuid_session est un UUID v4 stable, renseigne a la creation de la session (deplace depuis TASK-4)
+- [x] #3 Une session CLOTUREE peut être envoyée par POST /documents et passe à SYNCHRONISEE sur 201
+- [x] #4 Une erreur réseau ou 5xx passe la session à ECHEC_SYNC et le réessai est possible
+- [x] #5 Le renvoi d'une session déjà synchronisée est traité comme un succès
+- [x] #6 hash_ligne n'est pas envoyé dans le corps de la requête
+- [x] #7 L'Historique peut interroger GET /documents/{session_id} pour afficher l'état Nirgescom
+- [x] #8 L'export CSV reste disponible sur une session CLOTUREE, indépendamment de la synchro
+- [x] #9 uuid_session est un UUID v4 stable, renseigne a la creation de la session (deplace depuis TASK-4)
 - [x] #10 Le magasin n'est pas saisi mais choisi dans la liste fournie par GET /magasins, mise en cache localement, et le champ Depot disparait de Nouvelle Session
 <!-- AC:END -->
 
@@ -94,4 +94,30 @@ Verifie sur emulateur contre une instance de l API branchee sur la base de dev (
 9. serveur coupe -> « Serveur injoignable » et la liste en cache reste ouvrable
 
 gradle testDebugUnitTest, connectedDebugAndroidTest, lintDebug et assembleRelease passent.
+
+Tranche 2 livree (AC3 a AC9).
+
+SyncService compose SessionDao + LigneCollecteDao + ParametresSync + NirgescomClient, comme CsvExportService compose DAO et SAF. SessionRepository ne connait pas le reseau.
+
+uuid_session est pose a la CREATION de session, pas au premier envoi : l API calcule hash_ligne a partir de lui, un renvoi apres coupure doit produire exactement les memes hash. Les sessions anterieures a la migration 1 vers 2 en recoivent un au premier envoi, via un UPDATE garde par WHERE uuid_session IS NULL.
+
+Le champ magasin envoye est l INSTANTANE de la session (sessions.lieu), pas le reglage courant. Une tablette reconfiguree entre la collecte et l envoi rangerait sinon la collecte sous un depot ou elle n a pas eu lieu, en silence.
+
+hash_ligne n est pas envoye : construireCorps enumere exhaustivement les champs, il n y figure pas.
+
+Verifie sur emulateur contre l API branchee sur la base de dev, apres import du vrai catalogue (2723 articles, les 4 lignes a virgule recollees) :
+AC3 : session cloturee -> « Session envoyee. 2 lignes enregistrees. », statut Synchronisee ; les 2 lignes sont en base avec codemagasin NGOYA1, type_operation 1, statut_import EN_ATTENTE et un hash_ligne calcule par l API
+AC4 : serveur coupe -> « Echec de synchronisation » + « Serveur injoignable » ; serveur rendu -> reessai reussi
+AC5 : renvoi -> 201 avec lignes_ignorees=2 -> « Session deja recue par Nirgescom : 2 lignes etaient deja en base. », traite en succes
+AC7 : « Etat cote Nirgescom » -> « 0 traitees, 2 en attente, 0 en erreur (sur 2). »
+AC8 : la session synchronisee garde son bouton Exporter dans l Historique, son statut reste Cloturee
+403 : session collectee sous LEBOUDI envoyee avec une cle NGOYA I -> « Depot refuse... Cette session a ete collectee sous LEBOUDI, qui ne correspond pas au depot de la cle d API en place. » C est le comportement bruyant voulu par l instantane.
+
+testDebugUnitTest, connectedDebugAndroidTest, lintDebug et assembleRelease passent.
 <!-- SECTION:NOTES:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+Synchro WiFi complete. L app declare INTERNET avec un network_security_config en clair (l API n a pas de TLS sur le LAN), un ecran Parametres porte adresse, cle, tablette et le choix du depot dans la liste renvoyee par GET /magasins, et une session cloturee part vers Nirgescom par POST /documents depuis le Detail session, avec reprise sur echec et consultation de l etat par GET /documents/{id}. Verifie de bout en bout sur emulateur contre l API branchee sur la base de dev : envoi 201, renvoi idempotent traite en succes, coupure reseau -> ECHEC_SYNC puis reessai reussi, 403 explicite quand le depot de la session ne correspond pas a la cle, et lignes retrouvees en base de staging. testDebugUnitTest, connectedDebugAndroidTest, lintDebug et assembleRelease passent.
+<!-- SECTION:FINAL_SUMMARY:END -->

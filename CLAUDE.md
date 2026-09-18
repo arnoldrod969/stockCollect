@@ -9,12 +9,29 @@ foi, dans le dépôt de l'API. Ne pas en recopier une version ici : la copie pr�
 (`docs/SPEC-API.md`) avait divergé sur la table de staging, l'URL de base et la moitié des routes.
 
 Sections qui concernent l'app : §4 (endpoints), §5 (cycle de vie d'une session), §8 (pré-commande),
-§9 (consultation dépôts et stock). Phase 1 = fondations offline avant tout code réseau.
+§9 (consultation dépôts et stock).
+
+**L'app n'est plus hors ligne** : `INTERNET` est déclarée, avec un `network_security_config` qui
+autorise le trafic en clair — l'API n'a pas de TLS sur le LAN et son adresse est une IP privée
+saisie à l'exécution, qu'Android ne sait pas exprimer autrement qu'en autorisant tout.
+
+Quatre routes sont branchées, toutes depuis `data/remote/NirgescomClient.kt` en `HttpURLConnection`
+(pas d'OkHttp ni de Retrofit : le volume ne le justifie pas) : `GET /health` (test de connexion,
+non authentifié), `GET /magasins` (liste des dépôts, avec `ETag` / `If-None-Match`),
+`POST /documents` (envoi d'une session, via `domain/service/SyncService.kt`) et
+`GET /documents/{session_id}` (état côté Nirgescom). Le reste du fonctionnement — collecte, import,
+export CSV — n'a besoin d'aucun réseau et doit le rester.
 
 Points de contact avec le modèle actuel, à connaître avant de toucher aux sessions :
 
 - `session_id` est un **UUID v4** côté API ; `SessionEntity.idSession` est un `Long` local. Les deux
-  coexisteront, l'UUID arrive avec la migration 1→2.
+  coexistent. L'UUID est posé **à la création de la session**, pas au premier envoi : l'API calcule
+  `hash_ligne` à partir de lui et un renvoi après coupure doit produire exactement les mêmes hash.
+  Les sessions d'avant la migration 1→2 en reçoivent un au premier envoi, via un `UPDATE` gardé par
+  `WHERE uuid_session IS NULL` — une fois écrit, il ne bouge plus.
+- Un `201` est **toujours** un succès, y compris quand `lignes_ignorees` vaut le total : c'est un
+  renvoi après coupure, les doublons sont ignorés et non rejetés. En faire une erreur ferait
+  réessayer indéfiniment une session pourtant arrivée.
 - `magasin` doit valoir **exactement** le libellé porté par la clé d'API (comparaison stricte côté
   serveur, sinon `403`). **Dépôt et magasin sont une seule et même notion** : le magasin n'est plus
   saisi mais choisi dans la liste que `GET /magasins` fournit, mise en cache dans la table
@@ -30,7 +47,7 @@ Points de contact avec le modèle actuel, à connaître avant de toucher aux ses
 
 ## Project
 
-StockCollect — Android app for JD Cosmetics warehouse staff. Import a product catalogue from CSV, scan barcodes to collect stock counts, export the result as CSV. Single Gradle module `:app`. There is **no `INTERNET` permission**: the app is fully offline, everything lives in a local Room database.
+StockCollect — Android app for JD Cosmetics warehouse staff. Import a product catalogue from CSV, scan barcodes to collect stock counts, export the result as CSV. Single Gradle module `:app`. Everything lives in a local Room database and the whole collection flow — import, scan, count, CSV export — works **with no network at all**; the WiFi sync to Nirgescom (see above) is an addition on top, never a prerequisite.
 
 ## Commands
 

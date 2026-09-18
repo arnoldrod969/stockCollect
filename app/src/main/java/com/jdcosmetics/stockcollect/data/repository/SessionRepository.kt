@@ -9,6 +9,7 @@ import com.jdcosmetics.stockcollect.data.db.entity.SessionEntity
 import com.jdcosmetics.stockcollect.data.db.entity.StatutSession
 import com.jdcosmetics.stockcollect.util.DateUtils
 import kotlinx.coroutines.flow.Flow
+import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -22,13 +23,20 @@ class SessionRepository @Inject constructor(
 
     suspend fun getById(id: Long): SessionEntity? = sessionDao.getById(id)
 
+    /**
+     * L'UUID est posé **à la création**, pas à la première synchronisation : l'API calcule
+     * `hash_ligne` à partir de lui, et un renvoi après coupure réseau doit produire exactement les
+     * mêmes hash, sinon la session est insérée deux fois côté Nirgescom. Le générer plus tard
+     * ouvrirait une fenêtre où deux envois concurrents porteraient deux identifiants différents.
+     */
     suspend fun creerSession(typeOperation: String, lieu: String?, observations: String?): Long {
         val session = SessionEntity(
             typeOperation = typeOperation,
             dateHeureDebut = DateUtils.nowIso(),
             statut = StatutSession.BROUILLON,
             lieu = lieu,
-            observations = observations
+            observations = observations,
+            uuidSession = UUID.randomUUID().toString()
         )
         return sessionDao.insert(session)
     }

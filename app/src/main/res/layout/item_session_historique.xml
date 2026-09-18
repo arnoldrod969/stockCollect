@@ -18,6 +18,13 @@
             android:textSize="11sp" android:textColor="@color/on_surface_variant"/>
         <TextView android:id="@+id/tv_nb_lignes" android:layout_width="wrap_content" android:layout_height="wrap_content"
             android:textSize="11sp" android:textColor="@color/on_surface_variant"/>
+        <!--
+          État de synchro, distinct du chip de statut : une session peut être exportée en CSV et
+          non synchronisée, les confondre rendrait l'un des deux invisible. Masqué sur les
+          brouillons, qui n'ont rien à envoyer.
+        -->
+        <TextView android:id="@+id/tv_statut_sync" android:layout_width="wrap_content"
+            android:layout_height="wrap_content" android:textSize="11sp" android:visibility="gone"/>
     </LinearLayout>
     <com.google.android.material.button.MaterialButton android:id="@+id/btn_exporter"
         android:layout_width="wrap_content" android:layout_height="36dp"

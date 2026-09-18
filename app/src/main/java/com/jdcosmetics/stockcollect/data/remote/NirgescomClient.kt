@@ -55,12 +55,60 @@ sealed class ResultatMagasins {
 }
 
 /**
+ * Ce que l'API a fait d'un envoi.
+ *
+ * [Ok] couvre **tout** `201`, y compris un renvoi intégral où `lignesIgnorees` vaut le total : le
+ * contrat §4.2 le dit explicitement, les doublons sont ignorés et non rejetés. Traiter ce cas comme
+ * une erreur ferait réessayer indéfiniment une session pourtant arrivée.
+ */
+sealed class ResultatEnvoi {
+    data class Ok(val recues: Int, val inserees: Int, val ignorees: Int) : ResultatEnvoi()
+
+    /** `403` : le magasin envoyé ne correspond pas à celui de la clé. */
+    data class MagasinRefuse(val detail: String) : ResultatEnvoi()
+
+    data class CleRefusee(val detail: String) : ResultatEnvoi()
+
+    /** `422` : validation, détail par champ. Inutile de réessayer tel quel. */
+    data class Invalide(val detail: String) : ResultatEnvoi()
+
+    /** `503` / `500` : réessayable plus tard, contrairement aux précédents. */
+    data class Indisponible(val detail: String) : ResultatEnvoi()
+
+    data class Injoignable(val detail: String) : ResultatEnvoi()
+    data class UrlInvalide(val detail: String) : ResultatEnvoi()
+    data class ReponseInattendue(val code: Int, val detail: String) : ResultatEnvoi()
+}
+
+/** État d'une session côté Nirgescom (`GET /documents/{session_id}`). */
+data class EtatDocument(
+    val total: Int,
+    val enAttente: Int,
+    val traite: Int,
+    val erreur: Int,
+    val dateReception: String?,
+    val erreurs: List<String>
+)
+
+sealed class ResultatEtat {
+    data class Ok(val etat: EtatDocument) : ResultatEtat()
+
+    /** `404` : l'API ne connaît aucune ligne pour cette session. */
+    object Inconnue : ResultatEtat()
+
+    data class CleRefusee(val detail: String) : ResultatEtat()
+    data class Indisponible(val detail: String) : ResultatEtat()
+    data class Injoignable(val detail: String) : ResultatEtat()
+    data class ReponseInattendue(val code: Int, val detail: String) : ResultatEtat()
+}
+
+/**
  * Client HTTP de l'API Nirgescom.
  *
- * `HttpURLConnection` plutôt qu'OkHttp ou Retrofit : l'app n'a pour l'instant qu'un appel à faire,
- * en clair, sur un LAN. Une pile HTTP complète grossirait l'APK et demanderait des keep rules R8
- * supplémentaires pour un bénéfice nul à cette échelle. À réexaminer quand `POST /documents` et la
- * consultation des dépôts arriveront.
+ * `HttpURLConnection` plutôt qu'OkHttp ou Retrofit : quatre appels, en clair, sur un LAN, sans
+ * authentification négociée ni retry automatique à câbler. Une pile HTTP complète grossirait l'APK
+ * et demanderait des keep rules R8 supplémentaires pour un bénéfice nul à cette échelle. Le seuil
+ * serait un vrai besoin de streaming, de reprise, ou d'intercepteurs.
  */
 @Singleton
 class NirgescomClient @Inject constructor(private val parametres: ParametresSync) {
@@ -193,9 +241,154 @@ class NirgescomClient @Inject constructor(private val parametres: ParametresSync
         ResultatMagasins.ReponseInattendue(HttpURLConnection.HTTP_OK, "Réponse illisible.")
     }
 
-    /** L'API renvoie ses erreurs sous `{"erreur": "...", "detail": "..."}` (SPEC §4). */
+    /**
+     * `POST /documents` — envoi d'une session clôturée, session et lignes en un seul appel.
+     *
+     * `hash_ligne` n'est **pas** envoyé : l'API le calcule et fait foi (SPEC §4.2). L'envoyer
+     * n'apporterait rien et ferait diverger les deux implémentations au premier changement.
+     */
+    suspend fun envoyerDocument(corps: JSONObject): ResultatEnvoi = withContext(Dispatchers.IO) {
+        val url = try {
+            URL("${parametres.urlApi.trimEnd('/')}$CHEMIN_DOCUMENTS")
+        } catch (e: MalformedURLException) {
+            return@withContext ResultatEnvoi.UrlInvalide(
+                "Adresse du serveur illisible. Vérifiez les Paramètres."
+            )
+        }
+
+        var connexion: HttpURLConnection? = null
+        try {
+            connexion = (url.openConnection() as HttpURLConnection).apply {
+                requestMethod = "POST"
+                connectTimeout = DELAI_MS
+                // Un inventaire peut porter des milliers de lignes : le serveur a besoin de plus
+                // de temps pour répondre que pour un simple GET.
+                readTimeout = DELAI_ENVOI_MS
+                doOutput = true
+                setRequestProperty(EN_TETE_CLE, parametres.cleApi)
+                setRequestProperty("Content-Type", "application/json; charset=utf-8")
+            }
+            connexion.outputStream.bufferedWriter().use { it.write(corps.toString()) }
+
+            val code = connexion.responseCode
+            val texte = if (code < HttpURLConnection.HTTP_BAD_REQUEST) {
+                connexion.inputStream?.bufferedReader()?.use { it.readText() }.orEmpty()
+            } else {
+                connexion.errorStream?.bufferedReader()?.use { it.readText() }.orEmpty()
+            }
+
+            when (code) {
+                HttpURLConnection.HTTP_CREATED -> lireRecapitulatif(texte)
+                HttpURLConnection.HTTP_UNAUTHORIZED ->
+                    ResultatEnvoi.CleRefusee(messageApi(texte) ?: "Clé d'API refusée.")
+                HttpURLConnection.HTTP_FORBIDDEN ->
+                    ResultatEnvoi.MagasinRefuse(
+                        messageApi(texte) ?: "Magasin non autorisé pour cette clé."
+                    )
+                422 -> ResultatEnvoi.Invalide(messageApi(texte) ?: "Données refusées par le serveur.")
+                HttpURLConnection.HTTP_UNAVAILABLE, HttpURLConnection.HTTP_INTERNAL_ERROR ->
+                    ResultatEnvoi.Indisponible(
+                        messageApi(texte) ?: "Le serveur ne peut pas enregistrer pour l'instant."
+                    )
+                else -> ResultatEnvoi.ReponseInattendue(code, messageApi(texte).orEmpty())
+            }
+        } catch (e: SocketTimeoutException) {
+            ResultatEnvoi.Injoignable("Pas de réponse après ${DELAI_ENVOI_MS / 1000} s.")
+        } catch (e: IOException) {
+            ResultatEnvoi.Injoignable(e.message ?: "Serveur injoignable.")
+        } finally {
+            connexion?.disconnect()
+        }
+    }
+
+    /**
+     * Un `201` au corps illisible reste un succès : la session **est** arrivée. Ne retenir que les
+     * compteurs échoue, pas l'envoi — réessayer sur cette base réenverrait des lignes déjà en base.
+     */
+    private fun lireRecapitulatif(corps: String): ResultatEnvoi = runCatching {
+        val objet = JSONObject(corps)
+        ResultatEnvoi.Ok(
+            recues = objet.optInt("lignes_recues", -1),
+            inserees = objet.optInt("lignes_inserees", -1),
+            ignorees = objet.optInt("lignes_ignorees", -1)
+        )
+    }.getOrDefault(ResultatEnvoi.Ok(-1, -1, -1))
+
+    /** `GET /documents/{session_id}` — état de traitement côté Nirgescom (SPEC §4.3). */
+    suspend fun consulterDocument(uuidSession: String): ResultatEtat = withContext(Dispatchers.IO) {
+        val url = try {
+            URL("${parametres.urlApi.trimEnd('/')}$CHEMIN_DOCUMENTS/$uuidSession")
+        } catch (e: MalformedURLException) {
+            return@withContext ResultatEtat.ReponseInattendue(0, "Adresse du serveur illisible.")
+        }
+
+        var connexion: HttpURLConnection? = null
+        try {
+            connexion = (url.openConnection() as HttpURLConnection).apply {
+                requestMethod = "GET"
+                connectTimeout = DELAI_MS
+                readTimeout = DELAI_MS
+                setRequestProperty(EN_TETE_CLE, parametres.cleApi)
+            }
+            val code = connexion.responseCode
+            val texte = if (code < HttpURLConnection.HTTP_BAD_REQUEST) {
+                connexion.inputStream?.bufferedReader()?.use { it.readText() }.orEmpty()
+            } else {
+                connexion.errorStream?.bufferedReader()?.use { it.readText() }.orEmpty()
+            }
+
+            when (code) {
+                HttpURLConnection.HTTP_OK -> lireEtat(texte)
+                HttpURLConnection.HTTP_NOT_FOUND -> ResultatEtat.Inconnue
+                HttpURLConnection.HTTP_UNAUTHORIZED, HttpURLConnection.HTTP_FORBIDDEN ->
+                    ResultatEtat.CleRefusee(messageApi(texte) ?: "Clé d'API refusée.")
+                HttpURLConnection.HTTP_UNAVAILABLE, HttpURLConnection.HTTP_INTERNAL_ERROR ->
+                    ResultatEtat.Indisponible(messageApi(texte) ?: "Serveur indisponible.")
+                else -> ResultatEtat.ReponseInattendue(code, messageApi(texte).orEmpty())
+            }
+        } catch (e: SocketTimeoutException) {
+            ResultatEtat.Injoignable("Pas de réponse après ${DELAI_MS / 1000} s.")
+        } catch (e: IOException) {
+            ResultatEtat.Injoignable(e.message ?: "Serveur injoignable.")
+        } finally {
+            connexion?.disconnect()
+        }
+    }
+
+    private fun lireEtat(corps: String): ResultatEtat = try {
+        val objet = JSONObject(corps)
+        val tableau = objet.optJSONArray("erreurs")
+        val erreurs = (0 until (tableau?.length() ?: 0)).map { i ->
+            val e = tableau!!.getJSONObject(i)
+            "${e.optString("code_produit")} : ${e.optString("message_erreur")}"
+        }
+        ResultatEtat.Ok(
+            EtatDocument(
+                total = objet.optInt("total"),
+                enAttente = objet.optInt("en_attente"),
+                traite = objet.optInt("traite"),
+                erreur = objet.optInt("erreur"),
+                dateReception = objet.optString("date_reception").takeIf { it.isNotBlank() },
+                erreurs = erreurs
+            )
+        )
+    } catch (e: org.json.JSONException) {
+        ResultatEtat.ReponseInattendue(HttpURLConnection.HTTP_OK, "Réponse illisible.")
+    }
+
+    /**
+     * L'API renvoie ses erreurs sous `{"detail": ...}` (SPEC §4). En `422`, `detail` n'est pas une
+     * chaîne mais une liste de `{champ, message}` : sans ce cas, `optString` renverrait vide et
+     * l'écran afficherait « données refusées » sans jamais dire lequel des champs pose problème.
+     */
     private fun messageApi(corps: String): String? = runCatching {
         val objet = JSONObject(corps)
+        objet.optJSONArray("detail")?.let { tableau ->
+            return@runCatching (0 until tableau.length()).joinToString("\n") { i ->
+                val e = tableau.getJSONObject(i)
+                "${e.optString("champ")} : ${e.optString("message")}"
+            }.takeIf { it.isNotBlank() }
+        }
         listOf("detail", "message", "erreur")
             .firstNotNullOfOrNull { cle -> objet.optString(cle).takeIf { it.isNotBlank() } }
     }.getOrNull()
@@ -204,7 +397,11 @@ class NirgescomClient @Inject constructor(private val parametres: ParametresSync
         /** Pas de numéro de version dans l'URL, et c'est délibéré côté API (SPEC §4). */
         const val CHEMIN_SANTE = "/api/health"
         const val CHEMIN_MAGASINS = "/api/magasins"
+        const val CHEMIN_DOCUMENTS = "/api/documents"
         const val EN_TETE_CLE = "X-Api-Key"
+
+        /** Un inventaire complet fait des milliers de lignes ; l'insertion prend son temps. */
+        const val DELAI_ENVOI_MS = 60_000
 
         /** Un LAN qui ne répond pas en 5 s ne répondra pas ; l'opérateur attend devant l'écran. */
         const val DELAI_MS = 5_000

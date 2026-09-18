@@ -33,6 +33,42 @@
                 android:text="Articles saisis" android:textSize="12sp" android:textColor="@color/on_surface_variant"/>
             <TextView android:id="@+id/tv_nb_lignes" android:layout_width="wrap_content"
                 android:layout_height="wrap_content" android:textSize="15sp" android:textStyle="bold"/>
+
+            <!--
+              Bloc synchro : masqué entier tant que la session est un brouillon, il n'y a rien à
+              envoyer avant la clôture. Le statut de synchro est distinct du statut de session —
+              une session exportée en CSV peut rester non synchronisée, et inversement.
+            -->
+            <LinearLayout android:id="@+id/bloc_sync"
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:orientation="vertical" android:visibility="gone">
+                <View android:layout_width="match_parent" android:layout_height="0.5dp"
+                    android:background="@color/border" android:layout_marginVertical="12dp"/>
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                    android:text="Synchronisation Nirgescom" android:textSize="12sp"
+                    android:textColor="@color/on_surface_variant"/>
+                <TextView android:id="@+id/tv_statut_sync" android:layout_width="wrap_content"
+                    android:layout_height="wrap_content" android:textSize="15sp"
+                    android:textStyle="bold" android:layout_marginTop="2dp"/>
+                <TextView android:id="@+id/tv_detail_sync" android:layout_width="match_parent"
+                    android:layout_height="wrap_content" android:textSize="12sp"
+                    android:layout_marginTop="4dp" android:visibility="gone"/>
+
+                <ProgressBar android:id="@+id/progress_sync"
+                    android:layout_width="wrap_content" android:layout_height="wrap_content"
+                    android:layout_gravity="center_horizontal" android:visibility="gone"
+                    android:layout_marginTop="8dp"/>
+
+                <com.google.android.material.button.MaterialButton android:id="@+id/btn_synchroniser"
+                    android:layout_width="match_parent" android:layout_height="48dp"
+                    android:text="Synchroniser" app:cornerRadius="10dp"
+                    android:layout_marginTop="10dp"/>
+                <com.google.android.material.button.MaterialButton android:id="@+id/btn_etat_nirgescom"
+                    android:layout_width="match_parent" android:layout_height="48dp"
+                    android:text="État côté Nirgescom" app:cornerRadius="10dp"
+                    style="@style/Widget.Material3.Button.OutlinedButton"
+                    android:layout_marginTop="8dp" android:visibility="gone"/>
+            </LinearLayout>
         </LinearLayout>
     </com.google.android.material.card.MaterialCardView>
     <TextView android:id="@+id/tv_aucune_ligne" android:layout_width="match_parent"
