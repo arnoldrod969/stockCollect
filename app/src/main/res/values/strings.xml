@@ -55,7 +55,6 @@
     <string name="hint_recherche">Rechercher un article...</string>
     <string name="hint_code_barre">Code-barres...</string>
     <string name="hint_observations">Texte libre...</string>
-    <string name="hint_lieu">Dépôt / Point de vente</string>
 
     <!-- Labels -->
     <string name="label_articles">Articles</string>

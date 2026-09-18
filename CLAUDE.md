@@ -16,7 +16,13 @@ Points de contact avec le modèle actuel, à connaître avant de toucher aux ses
 - `session_id` est un **UUID v4** côté API ; `SessionEntity.idSession` est un `Long` local. Les deux
   coexisteront, l'UUID arrive avec la migration 1→2.
 - `magasin` doit valoir **exactement** le libellé porté par la clé d'API (comparaison stricte côté
-  serveur, sinon `403`). Ce n'est pas `sessions.lieu`, qui est du texte libre.
+  serveur, sinon `403`). **Dépôt et magasin sont une seule et même notion** : le magasin n'est plus
+  saisi mais choisi dans la liste que `GET /magasins` fournit, mise en cache dans la table
+  `magasins` (base v3). L'écran Nouvelle Session n'a plus de champ Dépôt ; la session hérite du
+  magasin réglé et en garde un **instantané** dans `sessions.lieu`, comme `nom_produit_snap`.
+  Relire le réglage à l'envoi étiquetterait silencieusement la collecte sous le mauvais dépôt si la
+  tablette a été reconfigurée entre-temps ; l'instantané fait au contraire échouer l'envoi en `403`.
+  Les sessions antérieures gardent leur ancien texte libre et restent lisibles.
 - Le contrat n'accepte que `INVENTAIRE` et `COMMANDE`.
 - Le statut de synchro vit dans une colonne **séparée** de `statut` : une session peut être
   exportée en CSV *et* synchronisée, l'export restant un repli.
@@ -77,6 +83,7 @@ Spread across five entities, a repository and a service — worth reading this b
 - **`lignes_collecte`** — one product + quantity inside a session. `code_barre_scanne` is null when the line was added by text search. `nom_produit_snap` is a deliberate snapshot of the product name so past sessions survive a catalogue re-import — don't "normalise" it away. `SessionRepository.ajouterLigne` enforces one line per `(session, code_produit)` by **summing** quantities on rescan rather than inserting a duplicate.
 - `sessions.nb_lignes` is a denormalised counter, refreshed only on insert and delete (correct, since merging doesn't change the count).
 - **`exports`** — append-only audit trail: filename, timestamp, line count, SAF URI.
+- **`magasins`** — local cache of `GET /magasins`, the only source of choosable dépôts. `nom_magasin` is **nullable** (the API really returns nulls); such a dépôt is listed but refused, since the libellé is what `POST /documents` sends. Replaced wholesale on each fetch (`MagasinDao.remplacerTout`) so a dépôt withdrawn server-side stops being offered; an empty response is rejected rather than written, to avoid emptying a working cache. The `ETag` lives in `ParametresSync`, and a `304` is a success, not an error.
 
 Flow: import catalogue → import barcode correspondence → create BROUILLON session → scan or search adds lines → `cloturer` → `CsvExportService.exporter` writes the CSV and flips the session to EXPORTEE.
 
@@ -107,7 +114,9 @@ A lot of user-facing text is **hardcoded French literals in Kotlin** rather than
 
 ## Changing the database schema
 
-The database is at `version = 1` with `.fallbackToDestructiveMigration()` in `di/DatabaseModule.kt`, and there are no `Migration` objects. Any entity change today **silently wipes collected sessions on the user's device**. Bump the version and write a real migration, or flag the data loss explicitly before proceeding.
+The database is at `version = 3`. `.fallbackToDestructiveMigration()` has been **removed** — it silently wiped collected sessions on the magasinier's tablet at every schema change. A missing migration now makes the database fail to open, which is loud but recoverable.
+
+Every entity change therefore needs three things, not one: a `Migration` in `data/db/Migrations.kt` added to the `MIGRATIONS` array, the exported JSON in `app/schemas/` **committed**, and a case in `app/src/androidTest/.../MigrationTest.kt`. The migration's raw SQL must match Room's generated `createSql` **character for character** (backticks, column order, `DEFAULT` values) — `runMigrationsAndValidate` is what catches a mismatch before the tablet does.
 
 <!-- BACKLOG.MD GUIDELINES START -->
 <!-- backlog.md-instructions-version: 1.48.0 -->

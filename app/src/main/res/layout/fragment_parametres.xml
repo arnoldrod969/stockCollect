@@ -33,23 +33,6 @@
 
         <com.google.android.material.textfield.TextInputLayout android:layout_width="match_parent"
             android:layout_height="wrap_content" style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
-            android:hint="Magasin" android:layout_marginBottom="4dp">
-            <com.google.android.material.textfield.TextInputEditText android:id="@+id/et_magasin"
-                android:layout_width="match_parent" android:layout_height="wrap_content"
-                android:inputType="textCapCharacters" android:maxLines="1"/>
-        </com.google.android.material.textfield.TextInputLayout>
-        <!--
-          Avertissement volontairement explicite : c'est la cause d'erreur la plus probable de tout
-          l'écran. L'API compare ce libellé à l'identique avec celui rattaché à la clé et répond 403
-          au moindre écart, y compris sur un espace ou une casse.
-        -->
-        <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:text="⚠ Doit être écrit exactement comme le libellé rattaché à la clé d'API (espaces et majuscules compris), sinon le serveur refuse l'envoi. Ce n'est pas le dépôt saisi pendant la collecte."
-            android:textSize="11sp" android:textColor="@color/on_surface_variant"
-            android:layout_marginBottom="12dp"/>
-
-        <com.google.android.material.textfield.TextInputLayout android:layout_width="match_parent"
-            android:layout_height="wrap_content" style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
             android:hint="Identifiant de la tablette (optionnel)" android:layout_marginBottom="16dp">
             <com.google.android.material.textfield.TextInputEditText android:id="@+id/et_tablette"
                 android:layout_width="match_parent" android:layout_height="wrap_content"
@@ -70,7 +53,56 @@
         <TextView android:id="@+id/tv_resultat_test"
             android:layout_width="match_parent" android:layout_height="wrap_content"
             android:textSize="12sp" android:visibility="gone"
+            android:layout_marginBottom="20dp"/>
+
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:text="Dépôt" android:textSize="13sp"
+            android:textColor="@color/on_surface_variant" android:layout_marginBottom="8dp"/>
+
+        <!--
+          La liste vient du serveur et n'est pas saisissable : l'API compare le libellé envoyé à
+          celui rattaché à la clé par égalité stricte et répond 403 au moindre écart. Une faute de
+          frappe ne se voyait qu'à l'envoi, c'est-à-dire après la clôture, qui est irréversible.
+        -->
+        <com.google.android.material.button.MaterialButton android:id="@+id/btn_recuperer_depots"
+            android:layout_width="match_parent" android:layout_height="52dp"
+            android:text="Récupérer les dépôts" app:cornerRadius="10dp"
+            style="@style/Widget.Material3.Button.OutlinedButton"
+            android:layout_marginBottom="8dp"/>
+
+        <ProgressBar android:id="@+id/progress_depots"
+            android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:layout_gravity="center_horizontal" android:visibility="gone"
+            android:layout_marginBottom="8dp"/>
+
+        <TextView android:id="@+id/tv_resultat_depots"
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:textSize="12sp" android:visibility="gone"
             android:layout_marginBottom="12dp"/>
+
+        <!--
+          Champ non saisissable qui ouvre une liste en dialogue, et non un menu déroulant Material :
+          l'ExposedDropdownMenu ne s'ouvrait pas sur la tablette de test (aucune fenêtre popup, sans
+          la moindre erreur). Le dialogue est par ailleurs le motif de sélection déjà utilisé
+          partout ailleurs dans l'app, et lui sait refuser une entrée non sélectionnable.
+        -->
+        <com.google.android.material.textfield.TextInputLayout android:id="@+id/til_magasin"
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+            app:endIconMode="custom" app:endIconDrawable="@android:drawable/arrow_down_float"
+            app:endIconContentDescription="Choisir le dépôt"
+            android:hint="Magasin" android:layout_marginBottom="4dp">
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/et_magasin"
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:inputType="none" android:focusable="false" android:cursorVisible="false"
+                android:maxLines="1"/>
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:text="⚠ Choisissez le dépôt rattaché à la clé d'API. Un autre dépôt de la liste reste refusé par le serveur au moment de l'envoi. Les sessions déjà créées gardent le dépôt en vigueur à leur création."
+            android:textSize="11sp" android:textColor="@color/on_surface_variant"
+            android:layout_marginBottom="20dp"/>
 
         <com.google.android.material.button.MaterialButton android:id="@+id/btn_enregistrer"
             android:layout_width="match_parent" android:layout_height="52dp"

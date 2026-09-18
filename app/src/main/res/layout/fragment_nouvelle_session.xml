@@ -16,7 +16,7 @@
                 android:orientation="horizontal" android:gravity="center_vertical" android:padding="14dp">
                 <!--
                   TextView de largeur nulle, conservé uniquement pour son requestFocus : sans lui,
-                  et_lieu prend le focus a l'ouverture et fait surgir le clavier. Il portait un
+                  et_observations prend le focus a l'ouverture et fait surgir le clavier. Il portait un
                   layout_weight="1" qui repoussait le libellé dans la moitié droite de la carte —
                   invisible tant qu'il y avait trois cartes, franchement de travers avec une seule.
                 -->
@@ -38,12 +38,17 @@
           de ces types peuvent exister sur des tablettes déjà déployées et doivent rester
           consultables et exportables dans l'Historique.
         -->
-        <com.google.android.material.textfield.TextInputLayout android:layout_width="match_parent"
-            android:layout_height="wrap_content" style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
-            android:hint="Dépôt / Point de vente (optionnel)" android:layout_marginBottom="12dp">
-            <com.google.android.material.textfield.TextInputEditText android:id="@+id/et_lieu"
-                android:layout_width="match_parent" android:layout_height="wrap_content"/>
-        </com.google.android.material.textfield.TextInputLayout>
+        <!--
+          Le dépôt n'est plus saisi ici : c'est la même notion que le magasin des Paramètres, et il
+          est désormais choisi là-bas dans la liste fournie par l'API. La session en garde un
+          instantané. Ce n'est qu'un rappel, non modifiable.
+        -->
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:text="Dépôt" android:textSize="13sp"
+            android:textColor="@color/on_surface_variant" android:layout_marginBottom="4dp"/>
+        <TextView android:id="@+id/tv_depot"
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:textSize="14sp" android:layout_marginBottom="16dp"/>
         <com.google.android.material.textfield.TextInputLayout android:layout_width="match_parent"
             android:layout_height="wrap_content" style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
             android:hint="Observations (optionnel)" android:layout_marginBottom="16dp">

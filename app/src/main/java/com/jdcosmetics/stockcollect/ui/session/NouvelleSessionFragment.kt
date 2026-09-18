@@ -4,6 +4,7 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
 import androidx.navigation.fragment.findNavController
@@ -34,8 +35,28 @@ class NouvelleSessionFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         setupTypeSelection()
+        afficherDepot()
         setupListeners()
         observeViewModel()
+    }
+
+    /**
+     * Rappel de ce qui sera inscrit dans la session. Une tablette non configurée reste utilisable —
+     * la collecte et l'export CSV n'ont pas besoin du réseau — mais l'écran doit le dire, sans quoi
+     * la session partirait sans dépôt sans que personne ne l'ait vu.
+     */
+    private fun afficherDepot() {
+        val magasin = viewModel.magasinConfigure
+        binding.tvDepot.text = magasin.ifBlank {
+            "Non configuré — la session n'aura pas de dépôt et ne pourra pas être synchronisée. " +
+                "Réglez-le dans Paramètres."
+        }
+        binding.tvDepot.setTextColor(
+            ContextCompat.getColor(
+                requireContext(),
+                if (magasin.isBlank()) R.color.red_on_container else R.color.on_surface
+            )
+        )
     }
 
     private fun setupTypeSelection() {
@@ -47,9 +68,8 @@ class NouvelleSessionFragment : Fragment() {
 
     private fun setupListeners() {
         binding.btnCommencerSaisie.setOnClickListener {
-            val lieu = binding.etLieu.text?.toString()?.trim()?.takeIf { it.isNotBlank() }
             val observations = binding.etObservations.text?.toString()?.trim()?.takeIf { it.isNotBlank() }
-            viewModel.creerSession(typeSelectionne, lieu, observations)
+            viewModel.creerSession(typeSelectionne, observations)
         }
     }
 

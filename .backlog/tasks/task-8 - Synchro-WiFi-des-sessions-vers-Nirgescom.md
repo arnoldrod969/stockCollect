@@ -4,7 +4,7 @@ title: Synchro WiFi des sessions vers Nirgescom
 status: In Progress
 assignee: []
 created_date: '2026-09-17 15:54'
-updated_date: '2026-09-17 18:40'
+updated_date: '2026-09-18 15:27'
 labels: []
 dependencies:
   - TASK-4
@@ -39,6 +39,7 @@ Points de vigilance connus :
 - [ ] #7 L'Historique peut interroger GET /documents/{session_id} pour afficher l'état Nirgescom
 - [ ] #8 L'export CSV reste disponible sur une session CLOTUREE, indépendamment de la synchro
 - [ ] #9 uuid_session est un UUID v4 stable, renseigne a la creation de la session (deplace depuis TASK-4)
+- [x] #10 Le magasin n'est pas saisi mais choisi dans la liste fournie par GET /magasins, mise en cache localement, et le champ Depot disparait de Nouvelle Session
 <!-- AC:END -->
 
 ## Implementation Plan
@@ -70,4 +71,27 @@ Tranche 1 livree (AC1, AC2). Verifie sur emulateur API 28 contre un vrai endpoin
 Decision assumee sur network_security_config : cleartext autorise globalement. L adresse est saisie a l execution et vaut une IP privee quelconque ; cleartextTrafficPermitted ne s applique qu a des domaines litteraux, Android ne sait pas exprimer une plage. Une liste d hotes imposerait de recompiler par magasin. Le fichier disparait quand l API passe en TLS.
 
 Reste la tranche 2 : AC3 a AC9 (POST /documents, statut_sync, uuid_session pose a la creation, bouton Synchroniser, GET /documents/{id} dans l Historique).
+
+Tranche 1bis — depot = magasin (AC10).
+
+Decision : depot et magasin sont une seule notion. Le champ Depot de Nouvelle Session est supprime ; la session herite du magasin regle et en garde un instantane dans sessions.lieu (meme principe que nom_produit_snap). Relire le reglage a l envoi etiquetterait silencieusement la collecte sous le mauvais depot apres une reconfiguration ; l instantane fait echouer l envoi en 403, ce qui est corrigeable.
+
+Base v3 : table magasins (code_magasin PK, nom_magasin nullable, date_import), MIGRATION_2_3, schema 3.json committe, MigrationTest etendu (2 vers 3, et 1 vers 3 enchainee). 4 tests instrumentes verts.
+
+nom_magasin est nullable pour de vrai cote API : un depot sans libelle est liste mais refuse, il n y aurait rien a envoyer.
+
+Defaut trouve a l execution : le MaterialAutoCompleteTextView en ExposedDropdownMenu ne s ouvrait pas du tout sur la tablette de test (aucune fenetre popup, aucune erreur en logcat, ni au tap sur le champ ni sur l icone). Remplace par un champ non saisissable qui ouvre un MaterialAlertDialog liste — le motif de selection deja utilise partout ailleurs dans l app, et qui sait refuser une entree non selectionnable.
+
+Verifie sur emulateur contre une instance de l API branchee sur la base de dev (3 depots dont un sans libelle) :
+1. cache vide -> Enregistrer refuse : « Recuperez d abord la liste des depots, puis choisissez-en un. »
+2. mauvaise cle -> « Cle d API refusee par le serveur » (401 distingue d une panne reseau)
+3. bonne cle -> « 3 depots recuperes. 1 sans libelle, non selectionnables. », table magasins peuplee avec le NULL conserve
+4. MOKOLO (sans libelle) -> refuse avec sa raison
+5. second appel -> 304 -> « Liste deja a jour (3 depots). », rien n est reecrit
+6. NGOYA I enregistre -> accueil « Magasin : NGOYA I », prefs magasin_code=NGOYA1 / magasin_libelle=NGOYA I / etag
+7. Nouvelle Session -> plus aucun champ Depot, sessions.lieu vaut « NGOYA I » en base
+8. magasin change pour LEBOUDI -> la session deja creee garde « NGOYA I »
+9. serveur coupe -> « Serveur injoignable » et la liste en cache reste ouvrable
+
+gradle testDebugUnitTest, connectedDebugAndroidTest, lintDebug et assembleRelease passent.
 <!-- SECTION:NOTES:END -->

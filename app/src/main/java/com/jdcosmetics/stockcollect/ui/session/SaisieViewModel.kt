@@ -7,6 +7,7 @@ import androidx.lifecycle.viewModelScope
 import com.jdcosmetics.stockcollect.data.db.entity.ArticleEntity
 import com.jdcosmetics.stockcollect.data.db.entity.LigneCollecteEntity
 import com.jdcosmetics.stockcollect.data.db.entity.SessionEntity
+import com.jdcosmetics.stockcollect.data.prefs.ParametresSync
 import com.jdcosmetics.stockcollect.data.repository.SessionRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
@@ -34,8 +35,13 @@ sealed class SaisieUiState {
 
 @HiltViewModel
 class SaisieViewModel @Inject constructor(
-    private val repository: SessionRepository
+    private val repository: SessionRepository,
+    private val parametres: ParametresSync
 ) : ViewModel() {
+
+    /** Le dépôt réglé, tel qu'il sera inscrit dans la session. Vide si rien n'est configuré. */
+    val magasinConfigure: String
+        get() = parametres.magasinLibelle
 
     private val _uiState = MutableLiveData<SaisieUiState>(SaisieUiState.Idle)
     val uiState: LiveData<SaisieUiState> = _uiState
@@ -54,14 +60,23 @@ class SaisieViewModel @Inject constructor(
     private val _searchResults = MutableLiveData<List<ArticleEntity>>(emptyList())
     val searchResults: LiveData<List<ArticleEntity>> = _searchResults
 
-    fun creerSession(typeOperation: String, lieu: String?, observations: String?) {
+    /**
+     * Le dépôt n'est plus saisi ici : la session hérite du magasin réglé dans les Paramètres, dont
+     * elle garde un **instantané** dans `lieu`, sur le même principe que `nom_produit_snap`.
+     *
+     * Relire le réglage au moment de l'envoi étiquetterait silencieusement la collecte sous le
+     * mauvais dépôt si la tablette a été reconfigurée entre-temps. L'instantané fait au contraire
+     * échouer l'envoi en 403 — bruyant, donc corrigeable.
+     */
+    fun creerSession(typeOperation: String, observations: String?) {
+        val lieu = parametres.magasinLibelle.takeIf { it.isNotBlank() }
         _uiState.value = SaisieUiState.Loading
         viewModelScope.launch {
             try {
                 val brouillonExistant = repository.getLastBrouillon()
                 if (brouillonExistant != null) {
-                    // Un brouillon d'un autre type ne se reprend pas en silence : le lieu et les
-                    // observations saisis seraient jetés, et la collecte irait grossir une session
+                    // Un brouillon d'un autre type ne se reprend pas en silence : les observations
+                    // saisies seraient jetées, et la collecte irait grossir une session
                     // que l'utilisateur n'a pas choisie.
                     if (brouillonExistant.typeOperation != typeOperation) {
                         _uiState.value = SaisieUiState.BrouillonAutreType(

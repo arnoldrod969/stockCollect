@@ -79,4 +79,42 @@ class MigrationTest {
         // Valide le schéma seul : aucune ligne à convertir, mais la structure doit correspondre.
         helper.runMigrationsAndValidate(nomBase, 2, true, MIGRATION_1_2)
     }
+
+    @Test
+    fun migration2vers3_creeLaTableMagasinsVide() {
+        helper.createDatabase(nomBase, 2).close()
+
+        val db = helper.runMigrationsAndValidate(nomBase, 3, true, MIGRATION_2_3)
+
+        // Vide et non pré-remplie : l'écran Paramètres reste bloqué tant que la liste n'a pas été
+        // récupérée auprès du serveur, c'est tout l'intérêt de la sélection obligatoire.
+        db.query("SELECT COUNT(*) FROM magasins").use { curseur ->
+            assertTrue(curseur.moveToFirst())
+            assertEquals(0, curseur.getInt(0))
+        }
+    }
+
+    @Test
+    fun migration1vers3_enchaineeConserveLesSessions() {
+        // Le vrai cas du parc : une tablette restée en v1 saute directement en v3.
+        helper.createDatabase(nomBase, 1).use { db ->
+            db.execSQL(
+                """
+                INSERT INTO sessions
+                    (id_session, type_operation, date_heure_debut, date_heure_cloture,
+                     statut, lieu, observations, nb_lignes)
+                VALUES (1, 'INVENTAIRE', '2026-09-17T10:00:00', NULL,
+                        'BROUILLON', 'NGOYA I', NULL, 3)
+                """.trimIndent()
+            )
+        }
+
+        val db = helper.runMigrationsAndValidate(nomBase, 3, true, *MIGRATIONS)
+
+        db.query("SELECT lieu FROM sessions WHERE id_session = 1").use { curseur ->
+            assertTrue(curseur.moveToFirst())
+            // `lieu` devient un instantané du magasin, mais les anciennes valeurs libres restent.
+            assertEquals("NGOYA I", curseur.getString(0))
+        }
+    }
 }

@@ -43,7 +43,7 @@ class HomeViewModel @Inject constructor(
      * `init` seul afficherait encore l'ancien état après un aller-retour.
      */
     fun rafraichirParametres() {
-        _magasinConfigure.value = parametres.magasin.takeIf { parametres.estConfigure }
+        _magasinConfigure.value = parametres.magasinLibelle.takeIf { parametres.estConfigure }
     }
 
     private fun charger() {

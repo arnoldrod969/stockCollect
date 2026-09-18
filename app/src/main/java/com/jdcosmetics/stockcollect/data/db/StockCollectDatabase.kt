@@ -10,6 +10,7 @@ import com.jdcosmetics.stockcollect.data.db.entity.*
  *
  * Version 1 : schéma initial avec 5 tables.
  * Version 2 : colonnes de synchronisation WiFi sur `sessions` (cf. [MIGRATION_1_2]).
+ * Version 3 : table `magasins`, cache local de `GET /magasins` (cf. [MIGRATION_2_3]).
  *
  * Incrémenter la version + ajouter une migration dans Migrations.kt à chaque changement de
  * schéma, et committer le JSON généré dans app/schemas/.
@@ -20,9 +21,10 @@ import com.jdcosmetics.stockcollect.data.db.entity.*
         ArtCodebarreEntity::class,
         SessionEntity::class,
         LigneCollecteEntity::class,
-        ExportEntity::class
+        ExportEntity::class,
+        MagasinEntity::class
     ],
-    version = 2,
+    version = 3,
     exportSchema = true   // Exporte le schéma JSON pour audit (dans app/schemas/)
 )
 abstract class StockCollectDatabase : RoomDatabase() {
@@ -32,4 +34,5 @@ abstract class StockCollectDatabase : RoomDatabase() {
     abstract fun sessionDao(): SessionDao
     abstract fun ligneCollecteDao(): LigneCollecteDao
     abstract fun exportDao(): ExportDao
+    abstract fun magasinDao(): MagasinDao
 }

@@ -41,5 +41,26 @@ val MIGRATION_1_2 = object : Migration(1, 2) {
     }
 }
 
+/**
+ * 2 → 3 : table `magasins`, cache local de `GET /magasins`.
+ *
+ * Rien à convertir — la table est simplement créée vide, et l'écran Paramètres reste bloqué tant
+ * qu'elle l'est. C'est voulu : aucun magasin non vérifié contre le serveur ne doit pouvoir exister.
+ *
+ * Le `CREATE TABLE` doit correspondre au caractère près à celui que Room génère dans
+ * `app/schemas/3.json`, backticks et ordre des colonnes compris. `MigrationTest` le vérifie.
+ */
+val MIGRATION_2_3 = object : Migration(2, 3) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL(
+            "CREATE TABLE IF NOT EXISTS `magasins` (" +
+                "`code_magasin` TEXT NOT NULL, " +
+                "`nom_magasin` TEXT, " +
+                "`date_import` TEXT NOT NULL, " +
+                "PRIMARY KEY(`code_magasin`))"
+        )
+    }
+}
+
 /** Toutes les migrations, dans l'ordre. À passer à `Room.databaseBuilder().addMigrations(...)`. */
-val MIGRATIONS = arrayOf(MIGRATION_1_2)
+val MIGRATIONS = arrayOf(MIGRATION_1_2, MIGRATION_2_3)

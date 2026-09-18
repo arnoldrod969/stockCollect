@@ -45,4 +45,7 @@ object DatabaseModule {
 
     @Provides
     fun provideExportDao(db: StockCollectDatabase): ExportDao = db.exportDao()
+
+    @Provides
+    fun provideMagasinDao(db: StockCollectDatabase): MagasinDao = db.magasinDao()
 }

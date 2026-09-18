@@ -34,13 +34,32 @@ class ParametresSync @Inject constructor(@ApplicationContext context: Context) {
         set(valeur) = prefs.edit().putString(CLE_API, valeur.trim()).apply()
 
     /**
-     * Doit valoir **exactement** le libellé porté par la clé d'API : l'API compare les deux à
-     * l'identique et répond 403 sinon. Ce n'est pas `sessions.lieu`, qui est du texte libre saisi
-     * par l'opérateur au moment de la collecte.
+     * Jeton du dépôt choisi (`tblsite.siCode`). Servira aux `GET /stock?magasin=` de l'étape 2.
+     *
+     * Le code et le libellé sont stockés tous les deux plutôt que l'un dérivé de l'autre : le
+     * libellé est ce que `POST /documents` exige, le code est ce que les consultations exigent, et
+     * retrouver l'un à partir de l'autre supposerait que le cache soit toujours peuplé.
      */
-    var magasin: String
-        get() = prefs.getString(CLE_MAGASIN, "").orEmpty()
-        set(valeur) = prefs.edit().putString(CLE_MAGASIN, valeur.trim()).apply()
+    var magasinCode: String
+        get() = prefs.getString(CLE_MAGASIN_CODE, "").orEmpty()
+        set(valeur) = prefs.edit().putString(CLE_MAGASIN_CODE, valeur.trim()).apply()
+
+    /**
+     * Libellé du dépôt, envoyé tel quel dans `POST /documents`. L'API le compare au libellé porté
+     * par la clé d'API par égalité stricte et répond 403 au moindre écart — d'où le choix dans une
+     * liste venue du serveur plutôt qu'une saisie libre.
+     */
+    var magasinLibelle: String
+        get() = prefs.getString(CLE_MAGASIN_LIBELLE, "").orEmpty()
+        set(valeur) = prefs.edit().putString(CLE_MAGASIN_LIBELLE, valeur.trim()).apply()
+
+    /**
+     * `ETag` de la dernière liste de dépôts reçue, rejoué en `If-None-Match`. Un `304` en retour
+     * veut dire « rien n'a changé » — la liste en cache reste valable, on ne la retélécharge pas.
+     */
+    var etagMagasins: String
+        get() = prefs.getString(CLE_ETAG_MAGASINS, "").orEmpty()
+        set(valeur) = prefs.edit().putString(CLE_ETAG_MAGASINS, valeur).apply()
 
     /** Identifie la tablette dans les logs de l'API, pour retrouver qui a envoyé quoi. */
     var identifiantTablette: String
@@ -49,13 +68,15 @@ class ParametresSync @Inject constructor(@ApplicationContext context: Context) {
 
     /** Sans ces trois-là, aucun envoi n'est possible ; l'identifiant tablette reste optionnel. */
     val estConfigure: Boolean
-        get() = urlApi.isNotBlank() && cleApi.isNotBlank() && magasin.isNotBlank()
+        get() = urlApi.isNotBlank() && cleApi.isNotBlank() && magasinCode.isNotBlank()
 
     private companion object {
         const val FICHIER = "parametres_sync"
         const val CLE_URL = "url_api"
         const val CLE_API = "cle_api"
-        const val CLE_MAGASIN = "magasin"
+        const val CLE_MAGASIN_CODE = "magasin_code"
+        const val CLE_MAGASIN_LIBELLE = "magasin_libelle"
+        const val CLE_ETAG_MAGASINS = "etag_magasins"
         const val CLE_TABLETTE = "identifiant_tablette"
     }
 }
