@@ -8,6 +8,7 @@ import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
 import androidx.navigation.fragment.findNavController
 import androidx.navigation.fragment.navArgs
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.jdcosmetics.stockcollect.databinding.FragmentRecapitulatifBinding
 import com.jdcosmetics.stockcollect.util.DateUtils
 import com.jdcosmetics.stockcollect.util.FormatUtils
@@ -60,7 +61,8 @@ class RecapitulatifFragment : Fragment() {
             }
             val restant = lignes.size - apercu.size
             binding.tvPlusLignes.visibility = if (restant > 0) View.VISIBLE else View.GONE
-            binding.tvPlusLignes.text = "+ $restant autre${if (restant > 1) "s" else ""} ligne${if (restant > 1) "s" else ""}..."
+            binding.tvPlusLignes.text =
+                "+ $restant autre${if (restant > 1) "s" else ""} ligne${if (restant > 1) "s" else ""}"
         }
 
         viewModel.uiState.observe(viewLifecycleOwner) { state ->
@@ -73,6 +75,17 @@ class RecapitulatifFragment : Fragment() {
                 }
                 is SaisieUiState.Loading -> {
                     binding.btnConfirmerCloture.isEnabled = false
+                }
+                is SaisieUiState.Erreur -> {
+                    binding.btnConfirmerCloture.isEnabled = true
+                    // Une clôture refusée ne se voyait nulle part : l'écran restait identique et
+                    // le magasinier retapait le bouton sans savoir que c'était déjà fait.
+                    MaterialAlertDialogBuilder(requireContext())
+                        .setTitle("La clôture n'a pas eu lieu")
+                        .setMessage(state.message)
+                        .setPositiveButton("Fermer", null)
+                        .show()
+                    viewModel.resetState()
                 }
                 else -> binding.btnConfirmerCloture.isEnabled = true
             }

@@ -79,4 +79,15 @@
     <string name="label_rechercher_nom">Rechercher par nom</string>
     <string name="rechercher_article_hint">Rechercher un article…</string>
     <string name="rechercher_article_empty">Saisissez au moins 2 caractères</string>
+
+    <!--
+      Descriptions pour TalkBack. Les commandes de quantité et de suppression sont des glyphes
+      (− + ✕) : sans libellé, le lecteur d'écran annonce « bouton » ou épelle le caractère.
+    -->
+    <string name="cd_diminuer_quantite">Diminuer la quantité</string>
+    <string name="cd_augmenter_quantite">Augmenter la quantité</string>
+    <string name="cd_supprimer_ligne">Retirer cet article de la session</string>
+    <string name="cd_ajouter_article">Ajouter cet article à la session</string>
+    <string name="cd_quantite">Quantité</string>
+    <string name="cd_exporter_session">Exporter cette session en CSV</string>
 </resources>

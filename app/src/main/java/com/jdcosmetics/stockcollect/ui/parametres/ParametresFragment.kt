@@ -89,8 +89,8 @@ class ParametresFragment : Fragment() {
                 } else {
                     Snackbar.make(
                         binding.root,
-                        "${magasin.codeMagasin} n'a pas de libellé côté Nirgescom : il n'y aurait " +
-                            "rien à envoyer au serveur.",
+                        "Le dépôt ${magasin.codeMagasin} n'a pas de nom dans Nirgescom : il ne " +
+                            "peut pas être choisi. Prévenez le service informatique.",
                         Snackbar.LENGTH_LONG
                     ).show()
                 }
@@ -125,7 +125,7 @@ class ParametresFragment : Fragment() {
             // Le champ reste muet plutôt que vide quand le cache l'est : sans cette phrase, l'écran
             // n'explique nulle part pourquoi la liste ne s'ouvre pas.
             binding.tilMagasin.hint =
-                if (magasins.isEmpty()) "Récupérez d'abord la liste des dépôts" else "Magasin"
+                if (magasins.isEmpty()) "Récupérez d'abord la liste des dépôts" else "Dépôt"
         }
 
         viewModel.magasinSelectionne.observe(viewLifecycleOwner) { afficherSelection(it) }

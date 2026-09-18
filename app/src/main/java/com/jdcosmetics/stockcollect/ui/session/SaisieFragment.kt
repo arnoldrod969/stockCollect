@@ -59,13 +59,13 @@ class SaisieFragment : Fragment() {
                 inputType = android.text.InputType.TYPE_CLASS_NUMBER or android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL
                 setText("1.0")
                 setSelectAllOnFocus(true)
-                hint = "Quantité"
+                hint = "Quantité comptée"
             }
             MaterialAlertDialogBuilder(requireContext())
-                .setTitle("Ajouter au panier")
-                .setMessage("Article\u00a0: ${article.nomProduit}\nCode\u00a0: ${article.codeProduit}")
+                .setTitle("Quantité comptée")
+                .setMessage("${article.nomProduit}\nCode produit\u00a0: ${article.codeProduit}")
                 .setView(input)
-                .setPositiveButton("Ajouter") { _, _ ->
+                .setPositiveButton("Ajouter à la session") { _, _ ->
                     val q = input.text.toString().toDoubleOrNull() ?: 1.0
                     viewModel.ajouterLigne(article, null, q)
                     binding.etRecherche.setText("")
@@ -104,30 +104,29 @@ class SaisieFragment : Fragment() {
         binding.btnCloturer.setOnClickListener {
             // Une quantité en cours de saisie n'est écrite qu'à la perte de focus, et un bouton
             // ne prend pas le focus en mode tactile : sans ce clearFocus, taper « 25 » puis
-            // clôturer verrouillait la session sur l'ancienne valeur. La confirmation qui suit
-            // laisse largement le temps à l'écriture de passer avant la clôture effective.
+            // quitter l'écran emportait l'ancienne valeur. L'écriture part avant la navigation,
+            // et le récapitulatif relit la base.
             binding.root.findFocus()?.clearFocus()
 
             val nbLignes = lignesAdapter.itemCount
             if (nbLignes == 0) {
                 MaterialAlertDialogBuilder(requireContext())
-                    .setTitle("Session vide")
-                    .setMessage("Aucune ligne saisie. Ajoutez des articles avant de clôturer.")
-                    .setPositiveButton("OK", null)
+                    .setTitle("Aucun article dans cette session")
+                    .setMessage(
+                        "Scannez un code-barre, ou cherchez un article par son nom, pour " +
+                            "l'ajouter à la session."
+                    )
+                    .setPositiveButton("Continuer la saisie", null)
                     .show()
                 return@setOnClickListener
             }
 
-            MaterialAlertDialogBuilder(requireContext())
-                .setTitle("Clôturer la session ?")
-                .setMessage("Cette action est irréversible. La session sera verrouillée ($nbLignes lignes).")
-                .setPositiveButton("Confirmer") { _, _ ->
-                    findNavController().navigate(
-                        SaisieFragmentDirections.actionSaisieToRecapitulatif(args.idSession)
-                    )
-                }
-                .setNegativeButton("Annuler", null)
-                .show()
+            // Pas de confirmation ici : ce bouton ne clôture rien, il mène au récapitulatif, qui
+            // porte déjà l'avertissement et le bouton irréversible. Un dialogue intermédiaire
+            // ajoutait un tap sur le geste le plus fréquent de l'app sans rien garder.
+            findNavController().navigate(
+                SaisieFragmentDirections.actionSaisieToRecapitulatif(args.idSession)
+            )
         }
     }
 

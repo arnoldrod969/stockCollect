@@ -34,24 +34,31 @@ class CsvExportService @Inject constructor(
     suspend fun exporter(idSession: Long, outputUri: Uri): ExportResult =
         withContext(Dispatchers.IO) {
             val session = sessionDao.getById(idSession)
-                ?: return@withContext ExportResult.Erreur("Session introuvable.")
+                ?: return@withContext ExportResult.Erreur(
+                    "Cette session n'existe plus sur la tablette."
+                )
 
             if (session.statut == "BROUILLON") {
                 return@withContext ExportResult.Erreur(
-                    "Seules les sessions clôturées peuvent être exportées."
+                    "Clôturez la session avant de l'exporter."
                 )
             }
 
             val lignes = sessionRepository.getLignesSync(idSession)
             if (lignes.isEmpty()) {
-                return@withContext ExportResult.Erreur("La session ne contient aucune ligne.")
+                return@withContext ExportResult.Erreur(
+                    "Cette session ne contient aucun article : il n'y a rien à exporter."
+                )
             }
 
             val nomFichier = DateUtils.toFileName()
 
             return@withContext try {
                 val outputStream = context.contentResolver.openOutputStream(outputUri)
-                    ?: return@withContext ExportResult.Erreur("Impossible d'ouvrir le fichier de destination.")
+                    ?: return@withContext ExportResult.Erreur(
+                        "Impossible d'écrire dans le fichier choisi. Recommencez en choisissant " +
+                            "un autre dossier, par exemple Téléchargements."
+                    )
 
                 OutputStreamWriter(outputStream, Charsets.UTF_8).use { writer ->
                     writer.write("${Constants.EXPORT_COL_CODE_BARRE},${Constants.EXPORT_COL_CODE_PRODUIT},${Constants.EXPORT_COL_NOM_PRODUIT},${Constants.EXPORT_COL_QUANTITE}\r\n")
@@ -85,7 +92,10 @@ class CsvExportService @Inject constructor(
                 ExportResult.Succes(nomFichier, lignes.size, outputUri)
 
             } catch (e: Exception) {
-                ExportResult.Erreur("Erreur lors de l'écriture : ${e.message}")
+                ExportResult.Erreur(
+                    "L'écriture du fichier s'est interrompue. Vérifiez l'espace libre sur la " +
+                        "tablette, puis recommencez.\n\n${e.message}"
+                )
             }
         }
 }

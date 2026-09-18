@@ -49,11 +49,16 @@ class CsvImportService @Inject constructor(
             val lignes = try {
                 CsvParser.lireFichierAvecFallbackEncodage(context, uri).second
             } catch (e: Exception) {
-                return@withContext AnalyseResult.Echec("Impossible de lire le fichier : ${e.message}")
+                return@withContext AnalyseResult.Echec(
+                    "Impossible de lire ce fichier. Vérifiez qu'il s'agit bien du fichier " +
+                        "catalogue exporté depuis Nirgescom.\n\n${e.message}"
+                )
             }
 
             if (lignes.isEmpty()) {
-                return@withContext AnalyseResult.Echec("Le fichier est vide.")
+                return@withContext AnalyseResult.Echec(
+                    "Ce fichier est vide. Choisissez le fichier catalogue exporté depuis Nirgescom."
+                )
             }
 
             val articles = mutableListOf<ArticleEntity>()
@@ -65,7 +70,7 @@ class CsvImportService @Inject constructor(
                 val numLigne = index + 1
 
                 if (colonnes.size < 4) {
-                    erreurs.add("Ligne $numLigne : nombre de colonnes insuffisant (${colonnes.size} < 4)")
+                    erreurs.add("Ligne $numLigne : il manque des colonnes (${colonnes.size} au lieu de 4 minimum)")
                     return@forEachIndexed
                 }
 
@@ -73,21 +78,21 @@ class CsvImportService @Inject constructor(
 
                 val codeProduit = ligne.codeProduit?.trim()?.takeIf { it.isNotBlank() }
                 if (codeProduit == null) {
-                    erreurs.add("Ligne $numLigne : code_produit vide ou manquant")
+                    erreurs.add("Ligne $numLigne : code produit absent")
                     return@forEachIndexed
                 }
                 if (codeProduit.length > 20) {
-                    erreurs.add("Ligne $numLigne : code_produit trop long (${codeProduit.length} > 20 car.)")
+                    erreurs.add("Ligne $numLigne : code produit trop long (${codeProduit.length} caractères, 20 au maximum)")
                     return@forEachIndexed
                 }
 
                 val nomProduit = ligne.nomProduit?.trim()?.takeIf { it.isNotBlank() }
                 if (nomProduit == null) {
-                    erreurs.add("Ligne $numLigne : nom_produit vide ou manquant")
+                    erreurs.add("Ligne $numLigne : nom de l'article absent")
                     return@forEachIndexed
                 }
                 if (nomProduit.length > 200) {
-                    erreurs.add("Ligne $numLigne : nom_produit trop long (${nomProduit.length} > 200 car.)")
+                    erreurs.add("Ligne $numLigne : nom de l'article trop long (${nomProduit.length} caractères, 200 au maximum)")
                     return@forEachIndexed
                 }
 
@@ -118,14 +123,18 @@ class CsvImportService @Inject constructor(
             val tauxErreur = erreurs.size.toDouble() / lignes.size
             if (tauxErreur > Constants.IMPORT_SEUIL_ERREUR_POURCENTAGE) {
                 return@withContext AnalyseResult.Echec(
-                    "Trop d'erreurs (${erreurs.size}/${lignes.size} lignes). Import annulé. " +
-                        "Vérifiez le format du fichier.",
+                    "${erreurs.size} lignes illisibles sur ${lignes.size} : le catalogue n'a pas été " +
+                        "modifié. Vérifiez qu'il s'agit bien du fichier catalogue exporté " +
+                        "depuis Nirgescom.",
                     erreurs
                 )
             }
 
             if (articles.isEmpty()) {
-                return@withContext AnalyseResult.Echec("Aucun article valide trouvé dans le fichier.", erreurs)
+                return@withContext AnalyseResult.Echec(
+                    "Aucun article lisible dans ce fichier. Le catalogue n'a pas été modifié.",
+                    erreurs
+                )
             }
 
             AnalyseResult.Pret(
@@ -200,7 +209,12 @@ class CsvImportService @Inject constructor(
                 erreurs = analyse.erreurs + analyse.lignesRecollees
             )
         } catch (e: Exception) {
-            ImportResult(success = false, messageErreur = "Erreur base de données : ${e.message}")
+            ImportResult(
+                success = false,
+                messageErreur = "L'enregistrement a échoué et rien n'a été modifié. " +
+                    "Réessayez ; si cela se reproduit, appelez le service informatique." +
+                    "\n\n${e.message}"
+            )
         }
     }
 
@@ -249,7 +263,8 @@ class CsvImportService @Inject constructor(
             if (articleDao.count() == 0) {
                 return@withContext ImportResult(
                     success = false,
-                    messageErreur = "Le catalogue articles doit être importé avant la table de correspondance."
+                    messageErreur = "Importez d'abord le catalogue des articles : les codes-barres " +
+                        "secondaires s'y rattachent."
                 )
             }
 
@@ -258,12 +273,17 @@ class CsvImportService @Inject constructor(
             } catch (e: Exception) {
                 return@withContext ImportResult(
                     success = false,
-                    messageErreur = "Impossible de lire le fichier : ${e.message}"
+                    messageErreur = "Impossible de lire ce fichier. Vérifiez qu'il s'agit bien " +
+                        "du fichier des codes-barres exporté depuis Nirgescom.\n\n${e.message}"
                 )
             }
 
             if (lignes.isEmpty()) {
-                return@withContext ImportResult(success = false, messageErreur = "Le fichier est vide.")
+                return@withContext ImportResult(
+                    success = false,
+                    messageErreur = "Ce fichier est vide. Choisissez le fichier des " +
+                        "codes-barres exporté depuis Nirgescom."
+                )
             }
 
             // Un seul aller-retour en base au lieu d'un findByCodeProduit par ligne.
@@ -284,39 +304,39 @@ class CsvImportService @Inject constructor(
                 val numLigne = index + 1
 
                 if (colonnes.size < 2) {
-                    erreurs.add("Ligne $numLigne : 2 colonnes requises, ${colonnes.size} trouvée(s)")
+                    erreurs.add("Ligne $numLigne : il manque des colonnes (${colonnes.size} au lieu de 2)")
                     return@forEachIndexed
                 }
 
                 val codeBarre = colonnes.getOrNull(Constants.COL_CB_CODE_BARRE)
                     ?.trim()?.takeIf { it.isNotBlank() }
                 if (codeBarre == null) {
-                    erreurs.add("Ligne $numLigne : code_barre vide")
+                    erreurs.add("Ligne $numLigne : code-barre absent")
                     return@forEachIndexed
                 }
 
                 val codeProduit = colonnes.getOrNull(Constants.COL_CB_CODE_PRODUIT)
                     ?.trim()?.takeIf { it.isNotBlank() }
                 if (codeProduit == null) {
-                    erreurs.add("Ligne $numLigne : code_produit vide")
+                    erreurs.add("Ligne $numLigne : code produit absent")
                     return@forEachIndexed
                 }
 
                 if (codeProduit !in codeProduitsConnus) {
-                    erreurs.add("Ligne $numLigne : code_produit '$codeProduit' introuvable dans le catalogue")
+                    erreurs.add("Ligne $numLigne : article « $codeProduit » absent du catalogue")
                     return@forEachIndexed
                 }
 
                 if (!vus.add(codeBarre)) {
-                    erreurs.add("Ligne $numLigne : code_barre '$codeBarre' déjà présent plus haut dans le fichier")
+                    erreurs.add("Ligne $numLigne : code-barre « $codeBarre » déjà présent plus haut dans le fichier")
                     return@forEachIndexed
                 }
 
                 val proprietaire = codeBarresPrincipaux[codeBarre]
                 if (proprietaire != null && proprietaire != codeProduit) {
                     erreurs.add(
-                        "Ligne $numLigne : code_barre '$codeBarre' est déjà le code-barre principal " +
-                            "de l'article '$proprietaire' — un code-barre n'appartient qu'à un seul article"
+                        "Ligne $numLigne : le code-barre « $codeBarre » appartient déjà à l'article " +
+                            "« $proprietaire » — un code-barre ne peut désigner qu'un seul article"
                     )
                     return@forEachIndexed
                 }
@@ -336,7 +356,8 @@ class CsvImportService @Inject constructor(
                     success = false,
                     nbErreurs = erreurs.size,
                     erreurs = erreurs,
-                    messageErreur = "Trop d'erreurs (${erreurs.size}/${lignes.size} lignes). Import annulé."
+                    messageErreur = "${erreurs.size} lignes illisibles sur ${lignes.size} : les " +
+                        "codes-barres n'ont pas été modifiés. Vérifiez le fichier."
                 )
             }
 
@@ -355,7 +376,12 @@ class CsvImportService @Inject constructor(
                     erreurs = erreurs
                 )
             } catch (e: Exception) {
-                ImportResult(success = false, messageErreur = "Erreur base de données : ${e.message}")
+                ImportResult(
+                success = false,
+                messageErreur = "L'enregistrement a échoué et rien n'a été modifié. " +
+                    "Réessayez ; si cela se reproduit, appelez le service informatique." +
+                    "\n\n${e.message}"
+            )
             }
         }
 

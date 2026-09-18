@@ -14,14 +14,14 @@ data class ImportResult(
     fun toResume(): String {
         return if (success) {
             buildString {
-                append("Import r\u00e9ussi\n")
-                append("\u2022 $nbImportes nouveaux articles\n")
+                append("Import termin\u00e9.\n")
+                append("\u2022 $nbImportes nouveaux\n")
                 if (nbMisAJour > 0) append("\u2022 $nbMisAJour mis \u00e0 jour\n")
-                if (nbIgnores > 0) append("\u2022 $nbIgnores ignor\u00e9s\n")
-                if (nbErreurs > 0) append("\u2022 $nbErreurs erreurs (voir d\u00e9tails)")
+                if (nbIgnores > 0) append("\u2022 $nbIgnores \u00e9cart\u00e9s\n")
+                if (nbErreurs > 0) append("\u2022 $nbErreurs lignes refus\u00e9es, \u00e0 corriger dans le fichier")
             }
         } else {
-            "Import annul\u00e9 : ${messageErreur ?: "Erreur inconnue"}"
+            "Rien n'a \u00e9t\u00e9 modifi\u00e9. ${messageErreur.orEmpty()}"
         }
     }
 }

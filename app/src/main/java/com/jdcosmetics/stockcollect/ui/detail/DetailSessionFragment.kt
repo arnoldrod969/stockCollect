@@ -55,8 +55,8 @@ class DetailSessionFragment : Fragment() {
             binding.tvTypeOperation.text = TypeOperation.label(session.typeOperation)
             binding.tvDateHeure.text = DateUtils.toDisplay(session.dateHeureDebut)
             binding.tvNbLignes.text = "${session.nbLignes} ligne${if (session.nbLignes > 1) "s" else ""}"
-            binding.tvLieu.text = session.lieu?.let { "Lieu : $it" } ?: ""
-            binding.tvObservations.text = session.observations?.let { "Obs. : $it" } ?: ""
+            binding.tvLieu.text = session.lieu?.let { "Dépôt : $it" } ?: ""
+            binding.tvObservations.text = session.observations?.let { "Observations : $it" } ?: ""
             val statutTexte = when (session.statut) {
                 StatutSession.BROUILLON -> "Brouillon"
                 StatutSession.CLOTUREE -> "Clôturée"
@@ -106,8 +106,10 @@ class DetailSessionFragment : Fragment() {
                 }
             )
         )
+        // « Envoyer » plutôt que « Synchroniser » : le geste est un envoi vers Nirgescom, pas une
+        // mise en accord dans les deux sens.
         binding.btnSynchroniser.text =
-            if (session.statutSync == StatutSync.SYNCHRONISEE) "Renvoyer" else "Synchroniser"
+            if (session.statutSync == StatutSync.SYNCHRONISEE) "Renvoyer" else "Envoyer"
         binding.btnEtatNirgescom.isVisible = session.statutSync == StatutSync.SYNCHRONISEE
 
         // L'erreur de la dernière tentative est réaffichée à l'ouverture de l'écran : sans elle, un

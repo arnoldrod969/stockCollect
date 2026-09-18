@@ -51,13 +51,14 @@ data class AnalyseCatalogue(
     /** Message du dialogue de choix. Donne le décompte par famille : aucune option n'est bonne
      *  dans les deux cas à la fois, l'utilisateur doit voir de quoi il s'agit. */
     fun resumeConflits(): String = buildString {
-        append("$nbArticlesPerdants article(s) revendiquent un code-barre déjà attribué.\n\n")
+        append("$nbArticlesPerdants articles portent un code-barre déjà pris par un autre ")
+        append("article du fichier.\n\n")
         if (nbFichesDupliquees > 0) {
-            append("• $nbFichesDupliquees fiche(s) en double : même nom de produit, ")
-            append("le catalogue Nirgescom contient deux fois le même article.\n")
+            append("• $nbFichesDupliquees fiches en double : même nom d'article, ")
+            append("le catalogue Nirgescom contient deux fois le même produit.\n")
         }
         if (nbVraisConflits > 0) {
-            append("• $nbVraisConflits conflit(s) réel(s) : des produits différents partagent ")
+            append("• $nbVraisConflits conflits réels : deux articles différents partagent ")
             append("un code-barre. À corriger dans Nirgescom.\n")
         }
     }
@@ -73,10 +74,10 @@ data class AnalyseCatalogue(
 
     /** Détail ligne à ligne, pour le rapport affiché une fois l'import terminé. */
     fun detailConflits(): List<String> = conflits.map { conflit ->
-        val nature = if (conflit.memeProduit) "fiche en double" else "CONFLIT RÉEL"
+        val nature = if (conflit.memeProduit) "fiche en double" else "conflit réel"
         val perdants = conflit.perdants.joinToString(", ") { "${it.codeProduit} (${it.nomProduit})" }
-        "${conflit.codeBarre} [$nature] → gardé par ${conflit.gagnant.codeProduit} " +
-            "(${conflit.gagnant.nomProduit}) ; écarté : $perdants"
+        "${conflit.codeBarre} — $nature : gardé par ${conflit.gagnant.codeProduit} " +
+            "(${conflit.gagnant.nomProduit}), écarté ${perdants}"
     }
 }
 

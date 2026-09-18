@@ -93,10 +93,14 @@ object StatutSync {
     const val SYNCHRONISEE = "SYNCHRONISEE"
     const val ECHEC_SYNC = "ECHEC_SYNC"
 
+    /**
+     * Le vocabulaire est celui de l'envoi, comme les boutons : « synchroniser » suggérerait un
+     * accord dans les deux sens, alors que rien ne redescend de Nirgescom vers la tablette.
+     */
     fun label(statut: String): String = when (statut) {
-        NON_SYNCHRONISEE -> "Non synchronisée"
-        SYNCHRONISEE -> "Synchronisée"
-        ECHEC_SYNC -> "Échec de synchronisation"
+        NON_SYNCHRONISEE -> "Pas encore envoyée"
+        SYNCHRONISEE -> "Envoyée à Nirgescom"
+        ECHEC_SYNC -> "Envoi échoué"
         else -> statut
     }
 }

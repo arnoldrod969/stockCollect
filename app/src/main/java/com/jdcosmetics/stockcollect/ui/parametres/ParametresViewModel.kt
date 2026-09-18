@@ -137,19 +137,26 @@ class ParametresViewModel @Inject constructor(
         viewModelScope.launch {
             _testState.value = when (val resultat = client.tester(urlSaisie)) {
                 is ResultatSante.Ok ->
-                    TestUiState.Succes("Connexion établie. API version ${resultat.version}.")
+                    TestUiState.Succes("Connexion établie. Nirgescom version ${resultat.version}.")
                 is ResultatSante.ApiSansBase ->
-                    TestUiState.Echec("${resultat.detail} Prévenez le service informatique.")
+                    TestUiState.Echec(
+                        "Le serveur répond mais n'accède pas à ses données. Prévenez le service " +
+                            "informatique.\n\n${resultat.detail}"
+                    )
                 is ResultatSante.Injoignable ->
                     // Le détail vient de la pile réseau et n'est pas traduit : il va sur une ligne
                     // à part, pour que la consigne utile reste lisible en premier.
                     TestUiState.Echec(
-                        "Serveur injoignable. Vérifiez le WiFi et l'adresse.\n\n${resultat.detail}"
+                        "Serveur injoignable. Vérifiez que la tablette est sur le WiFi de " +
+                            "l'entrepôt, puis relisez l'adresse ci-dessus.\n\n${resultat.detail}"
                     )
                 is ResultatSante.UrlInvalide ->
                     TestUiState.Echec(resultat.detail)
                 is ResultatSante.ReponseInattendue ->
-                    TestUiState.Echec("Réponse inattendue du serveur (code ${resultat.code}).")
+                    TestUiState.Echec(
+                        "Réponse inattendue du serveur. Prévenez le service informatique." +
+                            "\n\nCode ${resultat.code}."
+                    )
             }
         }
     }
@@ -179,19 +186,26 @@ class ParametresViewModel @Inject constructor(
                 is ResultatMagasins.Inchangee ->
                     DepotsUiState.Succes("Liste déjà à jour (${_magasins.value?.size ?: 0} dépôts).")
                 is ResultatMagasins.CleRefusee ->
-                    DepotsUiState.Echec("Clé d'API refusée par le serveur.\n\n${r.detail}")
+                    DepotsUiState.Echec(
+                        "Clé d'API refusée. Relisez la clé ci-dessus ; si elle est correcte, " +
+                            "demandez-en une au service informatique.\n\n${r.detail}"
+                    )
                 is ResultatMagasins.ApiSansBase ->
                     DepotsUiState.Echec(
-                        "${r.detail}\n\nLa liste des dépôts n'est pas lisible côté serveur. " +
-                            "Prévenez le service informatique."
+                        "Le serveur ne peut pas lire la liste des dépôts. Prévenez le service " +
+                            "informatique.\n\n${r.detail}"
                     )
                 is ResultatMagasins.Injoignable ->
                     DepotsUiState.Echec(
-                        "Serveur injoignable. Vérifiez le WiFi et l'adresse.\n\n${r.detail}"
+                        "Serveur injoignable. Vérifiez que la tablette est sur le WiFi de " +
+                            "l'entrepôt, puis relisez l'adresse ci-dessus.\n\n${r.detail}"
                     )
                 is ResultatMagasins.UrlInvalide -> DepotsUiState.Echec(r.detail)
                 is ResultatMagasins.ReponseInattendue ->
-                    DepotsUiState.Echec("Réponse inattendue du serveur (code ${r.code}). ${r.detail}")
+                    DepotsUiState.Echec(
+                        "Réponse inattendue du serveur. Prévenez le service informatique." +
+                            "\n\nCode ${r.code}. ${r.detail}"
+                    )
             }
         }
     }
@@ -204,7 +218,8 @@ class ParametresViewModel @Inject constructor(
     private suspend fun enregistrerDepots(resultat: ResultatMagasins.Ok): DepotsUiState {
         if (resultat.magasins.isEmpty()) {
             return DepotsUiState.Echec(
-                "Le serveur ne déclare aucun dépôt. La liste précédente est conservée."
+                "Le serveur ne déclare aucun dépôt. La liste précédente reste utilisable ; " +
+                    "prévenez le service informatique."
             )
         }
         val maintenant = DateUtils.nowIso()
@@ -223,8 +238,8 @@ class ParametresViewModel @Inject constructor(
         chargerMagasins()
 
         val sansLibelle = resultat.magasins.count { it.nomMagasin.isNullOrBlank() }
-        val message = "${resultat.magasins.size} dépôts récupérés." +
-            if (sansLibelle > 0) " $sansLibelle sans libellé, non sélectionnables." else ""
+        val message = "${resultat.magasins.size} dépôts récupérés. Choisissez le vôtre ci-dessous." +
+            if (sansLibelle > 0) " ($sansLibelle sans nom : ils ne peuvent pas être choisis.)" else ""
         return DepotsUiState.Succes(message)
     }
 

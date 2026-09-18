@@ -47,7 +47,7 @@ class SyncService @Inject constructor(
 
     suspend fun synchroniser(idSession: Long): ResultatSync {
         val session = sessionDao.getById(idSession)
-            ?: return ResultatSync.Impossible("Session introuvable.")
+            ?: return ResultatSync.Impossible("Cette session n'existe plus sur la tablette.")
 
         // L'export CSV reste possible sur une session clôturée quoi qu'il arrive (contrat §5) ;
         // c'est l'envoi qui exige une clôture, parce que le contenu ne doit plus bouger après coup.
@@ -56,7 +56,8 @@ class SyncService @Inject constructor(
         }
         if (!parametres.estConfigure) {
             return ResultatSync.Impossible(
-                "Réglez l'adresse du serveur, la clé d'API et le dépôt dans Paramètres."
+                "La tablette n'est pas encore reliée à Nirgescom. Réglez l'adresse du serveur, " +
+                    "la clé d'API et le dépôt dans Paramètres."
             )
         }
 
@@ -64,14 +65,16 @@ class SyncService @Inject constructor(
         // inventer le dépôt courant rangerait la collecte là où elle n'a pas eu lieu.
         if (session.lieu.isNullOrBlank()) {
             return ResultatSync.Impossible(
-                "Cette session a été créée sans dépôt. Elle ne peut pas être synchronisée ; " +
-                    "l'export CSV reste disponible."
+                "Cette session a été collectée avant qu'un dépôt soit réglé : Nirgescom ne " +
+                    "saurait pas où la ranger. Exportez-la en CSV."
             )
         }
 
         val lignes = ligneDao.getLignesBySessionSync(idSession)
         if (lignes.isEmpty()) {
-            return ResultatSync.Impossible("Cette session ne contient aucune ligne à envoyer.")
+            return ResultatSync.Impossible(
+                "Cette session ne contient aucun article : il n'y a rien à envoyer."
+            )
         }
 
         // Les sessions créées avant la migration 1→2 n'ont pas d'UUID : SQLite ne savait pas en
@@ -91,30 +94,39 @@ class SyncService @Inject constructor(
             }
             is ResultatEnvoi.MagasinRefuse -> echec(
                 idSession, maintenant,
-                "Dépôt refusé : ${resultat.detail}\n\nCette session a été collectée sous « " +
-                    "${session.lieu.orEmpty()} », qui ne correspond pas au dépôt de la clé d'API " +
-                    "en place. Vérifiez les Paramètres."
+                "Cette session a été collectée pour le dépôt « ${session.lieu.orEmpty()} », qui " +
+                    "ne correspond pas à la clé d'API réglée sur la tablette. Corrigez le dépôt " +
+                    "ou la clé dans Paramètres, ou appelez le service informatique. L'export CSV " +
+                    "reste possible.\n\n${resultat.detail}"
             ) { ResultatSync.Refuse(it) }
             is ResultatEnvoi.CleRefusee -> echec(
-                idSession, maintenant, "Clé d'API refusée : ${resultat.detail}"
+                idSession, maintenant,
+                "Clé d'API refusée par Nirgescom. Vérifiez la clé dans Paramètres ; si elle est " +
+                    "correcte, appelez le service informatique.\n\n${resultat.detail}"
             ) { ResultatSync.Refuse(it) }
             is ResultatEnvoi.Invalide -> echec(
-                idSession, maintenant, "Données refusées par le serveur :\n${resultat.detail}"
+                idSession, maintenant,
+                "Nirgescom a refusé le contenu de cette session. Réessayer n'y changera rien : " +
+                    "signalez-le au service informatique. L'export CSV reste possible." +
+                    "\n\n${resultat.detail}"
             ) { ResultatSync.Refuse(it) }
             is ResultatEnvoi.UrlInvalide -> echec(
                 idSession, maintenant, resultat.detail
             ) { ResultatSync.Refuse(it) }
             is ResultatEnvoi.Indisponible -> echec(
                 idSession, maintenant,
-                "Serveur indisponible : ${resultat.detail}\nRéessayez plus tard."
+                "Nirgescom ne peut pas enregistrer pour le moment. Réessayez dans quelques " +
+                    "minutes ; l'export CSV reste possible.\n\n${resultat.detail}"
             ) { ResultatSync.Reessayable(it) }
             is ResultatEnvoi.Injoignable -> echec(
                 idSession, maintenant,
-                "Serveur injoignable. Vérifiez le WiFi.\n\n${resultat.detail}"
+                "Serveur injoignable. Vérifiez que la tablette est sur le WiFi de l'entrepôt, " +
+                    "puis réessayez.\n\n${resultat.detail}"
             ) { ResultatSync.Reessayable(it) }
             is ResultatEnvoi.ReponseInattendue -> echec(
                 idSession, maintenant,
-                "Réponse inattendue du serveur (code ${resultat.code}). ${resultat.detail}"
+                "Réponse inattendue du serveur. Réessayez ; si cela se reproduit, prévenez le " +
+                    "service informatique.\n\nCode ${resultat.code}. ${resultat.detail}"
             ) { ResultatSync.Reessayable(it) }
         }
     }

@@ -87,7 +87,9 @@ class ExportFragment : Fragment() {
                     binding.btnExporter.isEnabled = true
                     Snackbar.make(
                         binding.root,
-                        "\u2713 ${state.nomFichier} (${state.nbLignes} lignes) \u2014 enregistré dans Téléchargements",
+                        // Le fichier va l\u00e0 o\u00f9 l'utilisateur l'a rang\u00e9 via le s\u00e9lecteur Android :
+                        // annoncer \u00ab T\u00e9l\u00e9chargements \u00bb \u00e9tait faux d\u00e8s qu'il choisissait ailleurs.
+                        "\u2713 Export termin\u00e9 : ${state.nomFichier} (${state.nbLignes} lignes)",
                         Snackbar.LENGTH_LONG
                     ).show()
                     viewModel.resetState()

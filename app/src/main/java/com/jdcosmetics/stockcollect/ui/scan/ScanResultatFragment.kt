@@ -68,7 +68,7 @@ class ScanResultatFragment : Fragment() {
         binding.btnAjouter.setOnClickListener {
             val quantite = quantiteSaisie()
             if (quantite == null) {
-                binding.etQuantite.error = "Quantité invalide"
+                binding.etQuantite.error = "Entrez un nombre, par exemple 12"
                 return@setOnClickListener
             }
             val state = scanViewModel.uiState.value?.peek()
@@ -99,8 +99,8 @@ class ScanResultatFragment : Fragment() {
         binding.groupEchec.isVisible = false
 
         binding.tvNomArticle.text = result.article.nomProduit
-        binding.tvCodeProduit.text = "Code : ${result.article.codeProduit}"
-        binding.tvCodeBarreScanne.text = "CB scanné : ${result.codeBarre}"
+        binding.tvCodeProduit.text = "Code produit : ${result.article.codeProduit}"
+        binding.tvCodeBarreScanne.text = "Code-barre scanné : ${result.codeBarre}"
         binding.tvViaTableCb.isVisible = result.viaTableCB
 
         ecrireQuantite(QUANTITE_PAR_DEFAUT)

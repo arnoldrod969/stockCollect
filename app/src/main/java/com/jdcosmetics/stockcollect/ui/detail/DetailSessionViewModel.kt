@@ -77,20 +77,26 @@ class DetailSessionViewModel @Inject constructor(
      * le dire évite qu'un « 0 ligne insérée » ne passe pour un échec.
      */
     private fun messageSucces(resultat: ResultatSync.Ok): String = when {
-        resultat.inserees < 0 -> "Session envoyée."
+        resultat.inserees < 0 -> "Session envoyée à Nirgescom."
         resultat.ignorees > 0 && resultat.inserees == 0 ->
-            "Session déjà reçue par Nirgescom : ${resultat.ignorees} lignes étaient déjà en base."
+            "Nirgescom avait déjà reçu cette session : ${lignes(resultat.ignorees)} y " +
+                "${if (resultat.ignorees > 1) "sont" else "est"} déjà. Rien à refaire."
         resultat.ignorees > 0 ->
-            "Session envoyée. ${resultat.inserees} lignes ajoutées, " +
-                "${resultat.ignorees} déjà présentes."
-        else -> "Session envoyée. ${resultat.inserees} lignes enregistrées."
+            "Session envoyée à Nirgescom : ${lignes(resultat.inserees)} de plus, " +
+                "${resultat.ignorees} y étaient déjà."
+        else -> "Session envoyée à Nirgescom : ${lignes(resultat.inserees)} en tout."
     }
+
+    /** L'accord au singulier compte : une session d'une seule ligne n'est pas un cas rare ici. */
+    private fun lignes(nb: Int) = "$nb ligne${if (nb > 1) "s" else ""}"
 
     /** Interroge Nirgescom sur le sort des lignes déjà envoyées (contrat §4.3). */
     fun consulterEtat() {
         val uuid = _session.value?.uuidSession
         if (uuid.isNullOrBlank()) {
-            _syncState.value = SyncUiState.Echec("Cette session n'a pas encore été envoyée.")
+            _syncState.value = SyncUiState.Echec(
+                "Cette session n'a pas encore été envoyée. Touchez « Envoyer » d'abord."
+            )
             return
         }
         _syncState.value = SyncUiState.Loading
@@ -98,22 +104,39 @@ class DetailSessionViewModel @Inject constructor(
             _syncState.value = when (val r = client.consulterDocument(uuid)) {
                 is ResultatEtat.Ok -> {
                     val e = r.etat
-                    val base = "Nirgescom : ${e.traite} traitées, ${e.enAttente} en attente, " +
-                        "${e.erreur} en erreur (sur ${e.total})."
+                    val base = "Chez Nirgescom : ${e.traite} lignes traitées, ${e.enAttente} en " +
+                        "attente, ${e.erreur} en erreur (sur ${e.total})."
                     if (e.erreurs.isEmpty()) SyncUiState.Succes(base)
                     // Des lignes en erreur ne sont pas un échec d'envoi : la session est bien
                     // arrivée, c'est Nirgescom qui bute sur des produits. D'où le rouge, mais pas
                     // de changement de statut_sync.
-                    else SyncUiState.Echec("$base\n\n" + e.erreurs.joinToString("\n"))
+                    else SyncUiState.Echec(
+                        "$base\n\nCes lignes sont à corriger dans Nirgescom :\n" +
+                            e.erreurs.joinToString("\n")
+                    )
                 }
                 is ResultatEtat.Inconnue ->
-                    SyncUiState.Echec("Nirgescom ne connaît aucune ligne pour cette session.")
-                is ResultatEtat.CleRefusee -> SyncUiState.Echec("Clé d'API refusée : ${r.detail}")
-                is ResultatEtat.Indisponible -> SyncUiState.Echec("Serveur indisponible : ${r.detail}")
+                    SyncUiState.Echec(
+                        "Nirgescom n'a aucune ligne pour cette session. Renvoyez-la."
+                    )
+                is ResultatEtat.CleRefusee -> SyncUiState.Echec(
+                    "Clé d'API refusée par Nirgescom. Vérifiez la clé dans Paramètres ; si elle " +
+                        "est correcte, appelez le service informatique.\n\n${r.detail}"
+                )
+                is ResultatEtat.Indisponible -> SyncUiState.Echec(
+                    "Nirgescom ne répond pas pour le moment. Réessayez dans quelques minutes." +
+                        "\n\n${r.detail}"
+                )
                 is ResultatEtat.Injoignable ->
-                    SyncUiState.Echec("Serveur injoignable. Vérifiez le WiFi.\n\n${r.detail}")
+                    SyncUiState.Echec(
+                        "Serveur injoignable. Vérifiez que la tablette est sur le WiFi de " +
+                            "l'entrepôt, puis réessayez.\n\n${r.detail}"
+                    )
                 is ResultatEtat.ReponseInattendue ->
-                    SyncUiState.Echec("Réponse inattendue du serveur (code ${r.code}). ${r.detail}")
+                    SyncUiState.Echec(
+                        "Réponse inattendue du serveur. Réessayez ; si cela se reproduit, " +
+                            "prévenez le service informatique.\n\nCode ${r.code}. ${r.detail}"
+                    )
             }
         }
     }

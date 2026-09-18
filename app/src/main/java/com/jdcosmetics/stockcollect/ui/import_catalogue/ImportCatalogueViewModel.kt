@@ -113,7 +113,11 @@ class ImportCatalogueViewModel @Inject constructor(
             chargerStatsCatalogue()
             ImportUiState.Success(result)
         } else {
-            ImportUiState.Error(result.messageErreur ?: "Erreur inconnue")
+            ImportUiState.Error(
+                result.messageErreur
+                    ?: "L'import a échoué sans raison identifiable. Réessayez ; si cela se " +
+                    "reproduit, appelez le service informatique."
+            )
         }
     }
 
@@ -125,7 +129,11 @@ class ImportCatalogueViewModel @Inject constructor(
                 chargerStatsCatalogue()
                 ImportUiState.Success(result)
             } else {
-                ImportUiState.Error(result.messageErreur ?: "Erreur inconnue")
+                ImportUiState.Error(
+                    result.messageErreur
+                        ?: "L'import a échoué sans raison identifiable. Réessayez ; si cela se " +
+                        "reproduit, appelez le service informatique."
+                )
             }
         }
     }

@@ -4,7 +4,8 @@
     android:layout_width="match_parent" android:layout_height="match_parent"
     android:background="@color/surface_variant">
     <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
-        android:orientation="vertical" android:padding="16dp">
+        android:orientation="vertical"
+        android:paddingHorizontal="@dimen/screen_padding_horizontal" android:paddingVertical="16dp">
 
         <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
             android:text="Connexion à Nirgescom" android:textSize="13sp"
@@ -19,7 +20,7 @@
         </com.google.android.material.textfield.TextInputLayout>
         <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
             android:text="Exemple : http://192.168.1.10:8000 — sans /api, il est ajouté automatiquement."
-            android:textSize="11sp" android:textColor="@color/on_surface_variant"
+            android:textSize="12sp" android:textColor="@color/on_surface_variant"
             android:layout_marginBottom="12dp"/>
 
         <com.google.android.material.textfield.TextInputLayout android:layout_width="match_parent"
@@ -40,7 +41,8 @@
         </com.google.android.material.textfield.TextInputLayout>
 
         <com.google.android.material.button.MaterialButton android:id="@+id/btn_tester"
-            android:layout_width="match_parent" android:layout_height="52dp"
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:minHeight="@dimen/button_height" android:insetTop="0dp" android:insetBottom="0dp"
             android:text="Tester la connexion" app:cornerRadius="10dp"
             style="@style/Widget.Material3.Button.OutlinedButton"
             android:layout_marginBottom="8dp"/>
@@ -52,7 +54,7 @@
 
         <TextView android:id="@+id/tv_resultat_test"
             android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:textSize="12sp" android:visibility="gone"
+            android:textSize="13sp" android:visibility="gone"
             android:layout_marginBottom="20dp"/>
 
         <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
@@ -65,7 +67,8 @@
           frappe ne se voyait qu'à l'envoi, c'est-à-dire après la clôture, qui est irréversible.
         -->
         <com.google.android.material.button.MaterialButton android:id="@+id/btn_recuperer_depots"
-            android:layout_width="match_parent" android:layout_height="52dp"
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:minHeight="@dimen/button_height" android:insetTop="0dp" android:insetBottom="0dp"
             android:text="Récupérer les dépôts" app:cornerRadius="10dp"
             style="@style/Widget.Material3.Button.OutlinedButton"
             android:layout_marginBottom="8dp"/>
@@ -77,7 +80,7 @@
 
         <TextView android:id="@+id/tv_resultat_depots"
             android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:textSize="12sp" android:visibility="gone"
+            android:textSize="13sp" android:visibility="gone"
             android:layout_marginBottom="12dp"/>
 
         <!--
@@ -89,23 +92,33 @@
         <com.google.android.material.textfield.TextInputLayout android:id="@+id/til_magasin"
             android:layout_width="match_parent" android:layout_height="wrap_content"
             style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
-            app:endIconMode="custom" app:endIconDrawable="@android:drawable/arrow_down_float"
+            app:endIconMode="custom" app:endIconDrawable="@drawable/ic_fleche_bas"
             app:endIconContentDescription="Choisir le dépôt"
-            android:hint="Magasin" android:layout_marginBottom="4dp">
+            android:hint="Dépôt" android:layout_marginBottom="4dp">
+            <!--
+              `focusable=true` + `focusableInTouchMode=false` plutôt que `focusable=false` : le
+              champ reste inatteignable au doigt (donc pas de clavier, ce que visait l'original),
+              mais TalkBack et un clavier physique peuvent de nouveau l'atteindre. Un champ
+              purement `focusable=false` était invisible pour le lecteur d'écran alors qu'il porte
+              le seul réglage bloquant de l'écran. `inputType=none` suffit à interdire la saisie.
+            -->
             <com.google.android.material.textfield.TextInputEditText
                 android:id="@+id/et_magasin"
                 android:layout_width="match_parent" android:layout_height="wrap_content"
-                android:inputType="none" android:focusable="false" android:cursorVisible="false"
+                android:inputType="none"
+                android:focusable="true" android:focusableInTouchMode="false"
+                android:cursorVisible="false"
                 android:maxLines="1"/>
         </com.google.android.material.textfield.TextInputLayout>
 
         <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
             android:text="⚠ Choisissez le dépôt rattaché à la clé d'API. Un autre dépôt de la liste reste refusé par le serveur au moment de l'envoi. Les sessions déjà créées gardent le dépôt en vigueur à leur création."
-            android:textSize="11sp" android:textColor="@color/on_surface_variant"
+            android:textSize="12sp" android:textColor="@color/on_surface_variant"
             android:layout_marginBottom="20dp"/>
 
         <com.google.android.material.button.MaterialButton android:id="@+id/btn_enregistrer"
-            android:layout_width="match_parent" android:layout_height="52dp"
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:minHeight="@dimen/button_height" android:insetTop="0dp" android:insetBottom="0dp"
             android:text="Enregistrer" app:cornerRadius="10dp"/>
     </LinearLayout>
 </ScrollView>

@@ -9,25 +9,34 @@
         <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
             android:orientation="horizontal" android:gravity="center_vertical">
             <TextView android:id="@+id/tv_type" android:layout_width="0dp" android:layout_height="wrap_content"
-                android:layout_weight="1" android:textSize="13sp" android:textStyle="bold"/>
+                android:layout_weight="1" android:textSize="15sp" android:textStyle="bold"
+                android:textColor="@color/on_surface"/>
             <TextView android:id="@+id/tv_statut" android:layout_width="wrap_content" android:layout_height="wrap_content"
-                android:textSize="10sp" android:paddingHorizontal="8dp" android:paddingVertical="3dp"
+                android:layout_marginStart="8dp"
+                android:textSize="11sp" android:paddingHorizontal="8dp" android:paddingVertical="4dp"
                 android:background="@drawable/bg_chip" android:textColor="@color/white"/>
         </LinearLayout>
         <TextView android:id="@+id/tv_date" android:layout_width="wrap_content" android:layout_height="wrap_content"
-            android:textSize="11sp" android:textColor="@color/on_surface_variant"/>
+            android:textSize="12sp" android:textColor="@color/on_surface_variant"/>
         <TextView android:id="@+id/tv_nb_lignes" android:layout_width="wrap_content" android:layout_height="wrap_content"
-            android:textSize="11sp" android:textColor="@color/on_surface_variant"/>
+            android:textSize="12sp" android:textColor="@color/on_surface_variant"/>
         <!--
           État de synchro, distinct du chip de statut : une session peut être exportée en CSV et
           non synchronisée, les confondre rendrait l'un des deux invisible. Masqué sur les
           brouillons, qui n'ont rien à envoyer.
         -->
         <TextView android:id="@+id/tv_statut_sync" android:layout_width="wrap_content"
-            android:layout_height="wrap_content" android:textSize="11sp" android:visibility="gone"/>
+            android:layout_height="wrap_content" android:textSize="12sp" android:visibility="gone"/>
     </LinearLayout>
-    <com.google.android.material.button.MaterialButton android:id="@+id/btn_exporter"
-        android:layout_width="wrap_content" android:layout_height="36dp"
-        android:text="Exporter" android:textSize="11sp" android:paddingHorizontal="12dp"
-        app:cornerRadius="8dp"/>
+    <!--
+      Il y avait ici un bouton « Exporter » sur chaque ligne, qu'aucun code n'écoutait :
+      HistoriqueAdapter n'y a jamais touché, et l'`btn_exporter` que le fragment branche est
+      celui de fragment_historique.xml, un autre bouton du même nom. Il s'affichait aussi sur
+      les brouillons, où l'export est refusé. Un bouton qui ne fait rien coûte plus qu'il
+      n'apporte : la ligne entière ouvre le détail de la session, et l'export d'une session
+      autre que la dernière clôturée reste à construire.
+    -->
+    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+        android:text="›" android:textSize="22sp" android:textColor="@color/on_surface_variant"
+        android:paddingHorizontal="8dp" android:importantForAccessibility="no"/>
 </LinearLayout>

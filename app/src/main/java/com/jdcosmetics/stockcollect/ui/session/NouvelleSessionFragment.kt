@@ -34,7 +34,6 @@ class NouvelleSessionFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        setupTypeSelection()
         afficherDepot()
         setupListeners()
         observeViewModel()
@@ -48,8 +47,8 @@ class NouvelleSessionFragment : Fragment() {
     private fun afficherDepot() {
         val magasin = viewModel.magasinConfigure
         binding.tvDepot.text = magasin.ifBlank {
-            "Non configuré — la session n'aura pas de dépôt et ne pourra pas être synchronisée. " +
-                "Réglez-le dans Paramètres."
+            "Aucun dépôt réglé. La session ne pourra pas être envoyée à Nirgescom, seulement " +
+                "exportée en CSV. Réglez le dépôt dans Paramètres."
         }
         binding.tvDepot.setTextColor(
             ContextCompat.getColor(
@@ -57,13 +56,6 @@ class NouvelleSessionFragment : Fragment() {
                 if (magasin.isBlank()) R.color.red_on_container else R.color.on_surface
             )
         )
-    }
-
-    private fun setupTypeSelection() {
-        // Plus de listener : la carte est le seul type disponible, elle est donc toujours
-        // sélectionnée. Le liseré reste pour que l'écran garde le même langage visuel quand
-        // COMMANDE viendra s'ajouter à côté.
-        binding.cardInventaire.strokeWidth = 3
     }
 
     private fun setupListeners() {
@@ -88,6 +80,10 @@ class NouvelleSessionFragment : Fragment() {
                 }
                 is SaisieUiState.Erreur -> {
                     binding.btnCommencerSaisie.isEnabled = true
+                    // Sans cet affichage, un échec de création ne se voyait qu'au bouton qui
+                    // redevenait cliquable : l'écran ne bougeait pas et rien n'était dit.
+                    afficherErreur(state.message)
+                    viewModel.resetState()
                 }
                 is SaisieUiState.Loading -> {
                     binding.btnCommencerSaisie.isEnabled = false
@@ -115,7 +111,15 @@ class NouvelleSessionFragment : Fragment() {
             .setPositiveButton("Reprendre le brouillon") { _, _ ->
                 viewModel.reprendreBrouillon(state.idSession)
             }
-            .setNegativeButton("Annuler") { _, _ -> viewModel.resetState() }
+            .setNegativeButton("Ne rien faire") { _, _ -> viewModel.resetState() }
+            .show()
+    }
+
+    private fun afficherErreur(message: String) {
+        MaterialAlertDialogBuilder(requireContext())
+            .setTitle("La session n'a pas démarré")
+            .setMessage(message)
+            .setPositiveButton("Fermer", null)
             .show()
     }
 

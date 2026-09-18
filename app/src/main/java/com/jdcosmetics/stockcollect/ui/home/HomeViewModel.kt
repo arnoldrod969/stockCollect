@@ -9,7 +9,6 @@ import com.jdcosmetics.stockcollect.data.db.dao.SessionDao
 import com.jdcosmetics.stockcollect.data.db.entity.SessionEntity
 import com.jdcosmetics.stockcollect.data.prefs.ParametresSync
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -39,27 +38,34 @@ class HomeViewModel @Inject constructor(
     init { charger() }
 
     /**
-     * Relu à chaque retour sur l'accueil : les paramètres changent dans un autre écran, et un
-     * `init` seul afficherait encore l'ancien état après un aller-retour.
+     * Tout est relu à chaque retour sur l'accueil.
+     *
+     * Le ViewModel survit à l'aller-retour vers un autre écran — il n'est vidé qu'au dépilement
+     * réel de l'accueil — donc un `init` seul laissait l'écran figé sur l'état d'avant : le
+     * catalogue fraîchement importé n'était pas compté, et surtout le raccourci « Reprendre »
+     * ne montrait pas le brouillon qu'on venait de créer. Celui qui sort d'une collecte perdait
+     * le chemin d'un tap pour y revenir.
+     *
+     * Le compteur de sessions, lui, vient d'un Flow et se met à jour seul.
      */
-    fun rafraichirParametres() {
+    fun rafraichir() {
         _magasinConfigure.value = parametres.magasinLibelle.takeIf { parametres.estConfigure }
+        viewModelScope.launch {
+            _nbArticles.value = articleDao.count()
+            _dernierImport.value = articleDao.getLastImportDate()
+            _lastBrouillon.value = sessionDao.getLastBrouillon()
+        }
     }
 
     private fun charger() {
-        rafraichirParametres()
+        rafraichir()
         viewModelScope.launch {
             _nbSessions.value = sessionDao.count()
-            _nbArticles.value = articleDao.count()
-            _dernierImport.value = articleDao.getLastImportDate()
         }
         viewModelScope.launch {
             sessionDao.getAllSessions().collect { sessions ->
                 _nbSessions.value = sessions.size
             }
-        }
-        viewModelScope.launch(Dispatchers.IO) {
-            _lastBrouillon.postValue(sessionDao.getLastBrouillon())
         }
     }
 }

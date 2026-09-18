@@ -73,6 +73,13 @@ class ImportCatalogueFragment : Fragment() {
     private fun observeViewModel() {
         viewModel.nbArticles.observe(viewLifecycleOwner) { nb ->
             binding.tvNbArticles.text = nb.toString()
+            // L'import de correspondance refuse de tourner tant qu'il n'y a pas d'articles : le
+            // laisser cliquable faisait choisir un fichier pour se voir refuser après coup.
+            binding.btnChoisirCorrespondance.isEnabled = nb > 0
+            binding.tvCorrespondanceAvertissement.text =
+                if (nb > 0) "⚠ L'import remplace toutes les correspondances existantes."
+                else "Importez d'abord le catalogue : les codes-barres se rattachent à des " +
+                    "articles, il en faut en base."
         }
         viewModel.nbCorrespondances.observe(viewLifecycleOwner) { nb ->
             binding.tvNbCorrespondances.text = nb.toString()
@@ -96,7 +103,7 @@ class ImportCatalogueFragment : Fragment() {
                 is ImportUiState.Success -> {
                     binding.progressCatalogue.isVisible = false
                     binding.btnChoisirCatalogue.isEnabled = true
-                    afficherDialogResultat("Import catalogue", state.result.toResume(), state.result.erreurs)
+                    afficherDialogResultat("Catalogue importé", state.result.toResume(), state.result.erreurs)
                     viewModel.resetCatalogueState()
                 }
                 is ImportUiState.Error -> {
@@ -106,7 +113,7 @@ class ImportCatalogueFragment : Fragment() {
                     // source, ce qui suppose de lire quelles lignes ont échoué. Un message qui
                     // s'efface tout seul au bout de trois secondes, sans le détail, laissait le
                     // magasinier devant un catalogue inchangé sans savoir pourquoi.
-                    afficherDialogResultat("Import refusé", state.message, state.erreurs)
+                    afficherDialogResultat("Catalogue non importé", state.message, state.erreurs)
                     viewModel.resetCatalogueState()
                 }
                 else -> {
@@ -124,31 +131,37 @@ class ImportCatalogueFragment : Fragment() {
                 }
                 is ImportUiState.Success -> {
                     binding.progressCorrespondance.isVisible = false
-                    binding.btnChoisirCorrespondance.isEnabled = true
-                    afficherDialogResultat("Import correspondance CB", state.result.toResume(), state.result.erreurs)
+                    binding.btnChoisirCorrespondance.isEnabled = catalogueCharge()
+                    afficherDialogResultat("Codes-barres importés", state.result.toResume(), state.result.erreurs)
                     viewModel.resetCorrespondanceState()
                 }
                 is ImportUiState.Error -> {
                     binding.progressCorrespondance.isVisible = false
-                    binding.btnChoisirCorrespondance.isEnabled = true
+                    binding.btnChoisirCorrespondance.isEnabled = catalogueCharge()
                     afficherErreur(state.message)
                     viewModel.resetCorrespondanceState()
                 }
                 else -> {
                     binding.progressCorrespondance.isVisible = false
-                    binding.btnChoisirCorrespondance.isEnabled = true
+                    binding.btnChoisirCorrespondance.isEnabled = catalogueCharge()
                 }
             }
         }
     }
+
+    /** L'étape 2 n'a de sens qu'avec des articles en base : le parseur refuse de tourner sans. */
+    private fun catalogueCharge(): Boolean = (viewModel.nbArticles.value ?: 0) > 0
 
     private fun confirmerEtImporterCatalogue(uri: Uri) {
         val nbActuels = viewModel.nbArticles.value ?: 0
         if (nbActuels > 0) {
             MaterialAlertDialogBuilder(requireContext())
                 .setTitle("Remplacer le catalogue ?")
-                .setMessage("Le catalogue actuel ($nbActuels articles) sera remplac\u00e9. Cette action est irr\u00e9versible.")
-                .setPositiveButton("Remplacer") { _, _ -> viewModel.importerCatalogue(uri) }
+                .setMessage(
+                    "Les $nbActuels articles actuels seront remplacés par ceux du fichier. " +
+                        "Les sessions déjà collectées, elles, ne changent pas."
+                )
+                .setPositiveButton("Remplacer le catalogue") { _, _ -> viewModel.importerCatalogue(uri) }
                 .setNegativeButton("Annuler", null)
                 .show()
         } else {
@@ -207,7 +220,11 @@ class ImportCatalogueFragment : Fragment() {
             }
             .setNegativeButton("Annuler l'import") { _, _ ->
                 viewModel.annulerImport()
-                Snackbar.make(binding.root, "Import annulé, rien n'a été modifié.", Snackbar.LENGTH_LONG).show()
+                Snackbar.make(
+                    binding.root,
+                    "Import annulé : le catalogue n'a pas changé.",
+                    Snackbar.LENGTH_LONG
+                ).show()
             }
             .create()
 
@@ -235,7 +252,7 @@ class ImportCatalogueFragment : Fragment() {
         MaterialAlertDialogBuilder(requireContext())
             .setTitle(titre)
             .setMessage(detail)
-            .setPositiveButton("OK", null)
+            .setPositiveButton("Fermer", null)
             .show()
     }
 

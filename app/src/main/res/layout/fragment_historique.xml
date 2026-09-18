@@ -3,31 +3,55 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent" android:layout_height="match_parent"
     android:orientation="vertical" android:background="@color/surface_variant">
-    <com.google.android.material.chip.ChipGroup android:layout_width="match_parent"
-        android:layout_height="wrap_content" android:padding="12dp">
+    <!--
+      `singleSelection` + `selectionRequired` + « Tous » coché d'emblée : sans eux, les quatre
+      puces s'ouvraient toutes décochées alors que le filtre courant était bien « Tous », et
+      pouvaient rester cochées ensemble — l'état affiché ne correspondait pas au filtre appliqué.
+      `chipMinHeight` à 48 dp : la hauteur Material par défaut est de 32 dp, difficile à viser
+      debout et avec des gants, même si la zone tactile est étendue en coulisse.
+    -->
+    <com.google.android.material.chip.ChipGroup
+        android:id="@+id/chip_group_filtres"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:paddingHorizontal="@dimen/screen_padding_horizontal"
+        android:paddingVertical="12dp"
+        app:singleSelection="true"
+        app:selectionRequired="true"
+        app:chipSpacingHorizontal="8dp"
+        app:chipSpacingVertical="8dp">
         <com.google.android.material.chip.Chip android:id="@+id/chip_tous"
             android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Tous"
+            android:checked="true" app:chipMinHeight="48dp"
             style="@style/Widget.Material3.Chip.Filter"/>
         <com.google.android.material.chip.Chip android:id="@+id/chip_inventaire"
             android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Inventaire"
+            app:chipMinHeight="48dp"
             style="@style/Widget.Material3.Chip.Filter"/>
         <com.google.android.material.chip.Chip android:id="@+id/chip_entree"
             android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Entrée"
+            app:chipMinHeight="48dp"
             style="@style/Widget.Material3.Chip.Filter"/>
         <com.google.android.material.chip.Chip android:id="@+id/chip_sortie"
             android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Sortie"
+            app:chipMinHeight="48dp"
             style="@style/Widget.Material3.Chip.Filter"/>
     </com.google.android.material.chip.ChipGroup>
     <com.google.android.material.button.MaterialButton android:id="@+id/btn_exporter"
-        android:layout_width="match_parent" android:layout_height="44dp"
+        android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:minHeight="@dimen/button_height" android:insetTop="0dp" android:insetBottom="0dp"
         android:text="⬇ Exporter la dernière session clôturée"
-        android:visibility="gone" android:layout_marginHorizontal="12dp" android:layout_marginBottom="4dp"
-        app:cornerRadius="8dp" app:backgroundTint="@color/green_secondary"/>
+        android:visibility="gone"
+        android:layout_marginHorizontal="@dimen/screen_padding_horizontal" android:layout_marginBottom="8dp"
+        app:cornerRadius="10dp" app:backgroundTint="@color/green_secondary"/>
     <TextView android:id="@+id/tv_aucune_session" android:layout_width="match_parent"
         android:layout_height="0dp" android:layout_weight="1" android:gravity="center"
-        android:text="Aucune session enregistrée." android:textColor="@color/on_surface_variant"
+        android:paddingHorizontal="@dimen/screen_padding_horizontal"
+        android:text="Aucune session enregistrée." android:textSize="15sp"
+        android:textColor="@color/on_surface_variant"
         android:visibility="gone"/>
     <androidx.recyclerview.widget.RecyclerView android:id="@+id/rv_sessions"
         android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1"
-        android:padding="12dp"/>
+        android:clipToPadding="false"
+        android:paddingHorizontal="@dimen/screen_padding_horizontal" android:paddingVertical="8dp"/>
 </LinearLayout>

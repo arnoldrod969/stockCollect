@@ -9,7 +9,8 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:padding="16dp">
+        android:paddingHorizontal="@dimen/screen_padding_horizontal"
+        android:paddingVertical="16dp">
 
         <ProgressBar
             android:id="@+id/progress_resolution"
@@ -51,6 +52,7 @@
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:text="✓"
+                            android:importantForAccessibility="no"
                             android:textSize="18sp"
                             android:textColor="@color/green_on_container"
                             android:textStyle="bold" />
@@ -60,20 +62,30 @@
                             android:layout_height="wrap_content"
                             android:layout_weight="1"
                             android:text="Article trouvé"
-                            android:textSize="13sp"
+                            android:textSize="14sp"
                             android:textStyle="bold"
                             android:textColor="@color/green_on_container"
                             android:layout_marginStart="6dp" />
 
+                        <!--
+                          Pastille d'information, pas un contrôle : `clickable=false` évite que
+                          TalkBack l'annonce comme un bouton. Le texte est forcé en blanc — la
+                          couleur par défaut d'un Chip est `colorOnSurface`, soit du gris très
+                          sombre, qui ne donnait que 2,8:1 sur le vert `green_secondary`.
+                        -->
                         <com.google.android.material.chip.Chip
                             android:id="@+id/tv_via_table_cb"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:text="Via table CB"
-                            android:textSize="10sp"
+                            android:textSize="11sp"
+                            android:textColor="@color/white"
+                            android:clickable="false"
+                            android:focusable="false"
+                            android:checkable="false"
                             android:visibility="gone"
                             app:chipBackgroundColor="@color/green_secondary"
-                            app:chipMinHeight="24dp" />
+                            app:chipMinHeight="28dp" />
                     </LinearLayout>
 
                     <TextView
@@ -132,31 +144,48 @@
 
                         <com.google.android.material.button.MaterialButton
                             android:id="@+id/btn_moins"
-                            android:layout_width="48dp"
-                            android:layout_height="48dp"
+                            android:layout_width="56dp"
+                            android:layout_height="56dp"
                             android:text="−"
-                            android:textSize="20sp"
+                            android:textSize="24sp"
+                            android:contentDescription="@string/cd_diminuer_quantite"
+                            android:insetTop="0dp"
+                            android:insetBottom="0dp"
+                            android:minWidth="0dp"
+                            android:minHeight="0dp"
+                            android:padding="0dp"
                             app:cornerRadius="12dp" />
 
                         <EditText
                             android:id="@+id/et_quantite"
-                            android:layout_width="80dp"
+                            android:layout_width="120dp"
                             android:layout_height="wrap_content"
+                            android:layout_marginHorizontal="12dp"
+                            android:minHeight="56dp"
                             android:text="1.0"
                             android:textSize="32sp"
                             android:textStyle="bold"
                             android:gravity="center"
+                            android:maxLines="1"
+                            android:imeOptions="actionDone"
                             android:textColor="@color/on_surface"
+                            android:contentDescription="@string/cd_quantite"
                             android:inputType="numberDecimal"
                             android:selectAllOnFocus="true"
-                            android:background="@null" />
+                            android:background="@drawable/bg_champ_quantite" />
 
                         <com.google.android.material.button.MaterialButton
                             android:id="@+id/btn_plus"
-                            android:layout_width="48dp"
-                            android:layout_height="48dp"
+                            android:layout_width="56dp"
+                            android:layout_height="56dp"
                             android:text="+"
-                            android:textSize="20sp"
+                            android:textSize="24sp"
+                            android:contentDescription="@string/cd_augmenter_quantite"
+                            android:insetTop="0dp"
+                            android:insetBottom="0dp"
+                            android:minWidth="0dp"
+                            android:minHeight="0dp"
+                            android:padding="0dp"
                             app:cornerRadius="12dp" />
                     </LinearLayout>
                 </LinearLayout>
@@ -165,7 +194,10 @@
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btn_ajouter"
                 android:layout_width="match_parent"
-                android:layout_height="52dp"
+                android:layout_height="wrap_content"
+                android:minHeight="@dimen/button_height"
+                android:insetTop="0dp"
+                android:insetBottom="0dp"
                 android:text="Ajouter à la session"
                 android:layout_marginBottom="8dp"
                 app:cornerRadius="10dp" />
@@ -173,7 +205,10 @@
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btn_scanner_suivant"
                 android:layout_width="match_parent"
-                android:layout_height="48dp"
+                android:layout_height="wrap_content"
+                android:minHeight="@dimen/button_height"
+                android:insetTop="0dp"
+                android:insetBottom="0dp"
                 android:text="Scanner le suivant"
                 app:cornerRadius="10dp"
                 style="@style/Widget.Material3.Button.OutlinedButton" />
@@ -205,7 +240,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="✗ Code-barres inconnu"
-                        android:textSize="13sp"
+                        android:textSize="14sp"
                         android:textStyle="bold"
                         android:textColor="@color/red_on_container"
                         android:layout_marginBottom="6dp" />
@@ -230,7 +265,10 @@
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btn_rescanner"
                 android:layout_width="match_parent"
-                android:layout_height="48dp"
+                android:layout_height="wrap_content"
+                android:minHeight="@dimen/button_height"
+                android:insetTop="0dp"
+                android:insetBottom="0dp"
                 android:text="Rescanner"
                 app:cornerRadius="10dp"
                 style="@style/Widget.Material3.Button.OutlinedButton" />

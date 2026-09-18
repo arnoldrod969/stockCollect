@@ -92,7 +92,12 @@ class SaisieViewModel @Inject constructor(
                 val id = repository.creerSession(typeOperation, lieu, observations)
                 reprendre(id)
             } catch (e: Exception) {
-                _uiState.value = SaisieUiState.Erreur(e.message ?: "Erreur création session")
+                // Le message d'exception n'est ni français ni actionnable : il passe en détail
+                // secondaire, derrière la consigne.
+                _uiState.value = SaisieUiState.Erreur(
+                    "La session n'a pas pu être créée. Réessayez ; si cela se reproduit, " +
+                        "appelez le service informatique." + detailTechnique(e)
+                )
             }
         }
     }
@@ -103,7 +108,10 @@ class SaisieViewModel @Inject constructor(
             try {
                 reprendre(idSession)
             } catch (e: Exception) {
-                _uiState.value = SaisieUiState.Erreur(e.message ?: "Erreur reprise session")
+                _uiState.value = SaisieUiState.Erreur(
+                    "Ce brouillon n'a pas pu être rouvert. Retrouvez-le dans l'Historique ; " +
+                        "si cela se reproduit, appelez le service informatique." + detailTechnique(e)
+                )
             }
         }
     }
@@ -181,12 +189,21 @@ class SaisieViewModel @Inject constructor(
             if (success) {
                 _uiState.value = SaisieUiState.SessionCloturee
             } else {
-                _uiState.value = SaisieUiState.Erreur("Impossible de clôturer la session.")
+                // Le UPDATE gardé ne matche que BROUILLON : un échec veut dire que la session
+                // était déjà clôturée, pas qu'il y a eu une panne.
+                _uiState.value = SaisieUiState.Erreur(
+                    "Cette session est déjà clôturée. Retrouvez-la dans l'Historique pour " +
+                        "l'exporter ou l'envoyer à Nirgescom."
+                )
             }
         }
     }
 
     fun getIdSessionCourante(): Long = _idSessionCourante
+
+    /** Le message d'origine, sur une ligne à part, pour que la consigne reste lisible en premier. */
+    private fun detailTechnique(e: Exception): String =
+        e.message?.takeIf { it.isNotBlank() }?.let { "\n\n$it" }.orEmpty()
 
     fun resetState() { _uiState.value = SaisieUiState.Idle }
 }
