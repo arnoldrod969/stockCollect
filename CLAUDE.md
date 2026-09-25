@@ -135,6 +135,14 @@ The database is at `version = 3`. `.fallbackToDestructiveMigration()` has been *
 
 Every entity change therefore needs three things, not one: a `Migration` in `data/db/Migrations.kt` added to the `MIGRATIONS` array, the exported JSON in `app/schemas/` **committed**, and a case in `app/src/androidTest/.../MigrationTest.kt`. The migration's raw SQL must match Room's generated `createSql` **character for character** (backticks, column order, `DEFAULT` values) — `runMigrationsAndValidate` is what catches a mismatch before the tablet does.
 
+## Version originale (V1) — branche `v1-original`
+
+The original offline app, before any lot and without the WiFi sync, is preserved on the branch **`v1-original`** (pushed to `origin`): commit `e384227` plus a documentation-only `README.md` that holds the full procedure. `master` pointed at the same commit until the V2 merge, after which that branch is the only named way back.
+
+- Never merge `master` or this branch into `v1-original`. A V1 hotfix goes on a branch cut from it (`git switch -c v1-correctif v1-original`).
+- To build it: `git switch v1-original` (or `git worktree add ../stockCollect-v1 v1-original`), then `./gradlew :app:assembleDebug`. Its `assembleRelease` fails — `proguard-rules.pro` is missing there.
+- **Reinstalling V1 over V2 on a tablet wipes the data, silently.** Both share `applicationId` and `versionCode = 1`, so Android does not refuse the install; V1 then finds a version-3 database, and its `fallbackToDestructiveMigration()` also covers downgrades — the base is recreated empty. Export (or sync) every session to keep first, then reimport the catalogue. V1 → V2 is safe (migrations 1→2→3). Bumping `versionCode` in V2 would make Android refuse the downgrade instead.
+
 <!-- BACKLOG.MD GUIDELINES START -->
 <!-- backlog.md-instructions-version: 1.48.0 -->
 <CRITICAL_INSTRUCTION>
