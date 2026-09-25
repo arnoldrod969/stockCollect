@@ -29,13 +29,19 @@
             android:layout_height="wrap_content" android:textSize="12sp" android:visibility="gone"/>
     </LinearLayout>
     <!--
-      Il y avait ici un bouton « Exporter » sur chaque ligne, qu'aucun code n'écoutait :
-      HistoriqueAdapter n'y a jamais touché, et l'`btn_exporter` que le fragment branche est
-      celui de fragment_historique.xml, un autre bouton du même nom. Il s'affichait aussi sur
-      les brouillons, où l'export est refusé. Un bouton qui ne fait rien coûte plus qu'il
-      n'apporte : la ligne entière ouvre le détail de la session, et l'export d'une session
-      autre que la dernière clôturée reste à construire.
+      Export de CETTE session (TASK-9), branché par HistoriqueAdapter via onExporterClick et
+      affiché seulement pour CLOTUREE / EXPORTEE — jamais sur un brouillon. Nommé
+      `btn_exporter_ligne` et non `btn_exporter` : l'homonyme de fragment_historique.xml
+      (« dernière session clôturée ») avait déjà fait croire branché un bouton mort ici.
     -->
+    <com.google.android.material.button.MaterialButton android:id="@+id/btn_exporter_ligne"
+        style="@style/Widget.Material3.Button.TonalButton"
+        android:layout_width="wrap_content" android:layout_height="wrap_content"
+        android:minHeight="48dp" android:insetTop="0dp" android:insetBottom="0dp"
+        android:layout_marginStart="8dp"
+        android:text="Exporter" android:textSize="12sp"
+        android:contentDescription="Exporter cette session en CSV"
+        android:visibility="gone"/>
     <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
         android:text="›" android:textSize="22sp" android:textColor="@color/on_surface_variant"
         android:paddingHorizontal="8dp" android:importantForAccessibility="no"/>

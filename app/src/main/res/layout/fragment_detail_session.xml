@@ -37,6 +37,18 @@
                 android:layout_height="wrap_content" android:textSize="15sp" android:textStyle="bold"/>
 
             <!--
+              Export CSV de CETTE session (TASK-9). Hors du bloc synchro : l'export est le repli
+              sans réseau, il ne dépend pas de l'envoi. Masqué sur un brouillon ; offert aussi
+              une fois exportée, pour réécrire un fichier perdu.
+            -->
+            <com.google.android.material.button.MaterialButton android:id="@+id/btn_exporter_csv"
+                style="@style/Widget.Material3.Button.OutlinedButton"
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:minHeight="@dimen/button_height" android:insetTop="0dp" android:insetBottom="0dp"
+                android:text="⬇ Exporter en CSV" app:cornerRadius="10dp"
+                android:layout_marginTop="10dp" android:visibility="gone"/>
+
+            <!--
               Bloc synchro : masqué entier tant que la session est un brouillon, il n'y a rien à
               envoyer avant la clôture. Le statut de synchro est distinct du statut de session —
               une session exportée en CSV peut rester non synchronisée, et inversement.

@@ -8,6 +8,7 @@ import androidx.core.content.ContextCompat
 import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
+import androidx.navigation.fragment.findNavController
 import androidx.navigation.fragment.navArgs
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.jdcosmetics.stockcollect.R
@@ -16,6 +17,7 @@ import com.jdcosmetics.stockcollect.data.db.entity.StatutSession
 import com.jdcosmetics.stockcollect.data.db.entity.StatutSync
 import com.jdcosmetics.stockcollect.data.db.entity.TypeOperation
 import com.jdcosmetics.stockcollect.databinding.FragmentDetailSessionBinding
+import com.jdcosmetics.stockcollect.domain.service.estExportable
 import com.jdcosmetics.stockcollect.util.DateUtils
 import dagger.hilt.android.AndroidEntryPoint
 
@@ -45,6 +47,13 @@ class DetailSessionFragment : Fragment() {
         }
         binding.btnSynchroniser.setOnClickListener { viewModel.synchroniser() }
         binding.btnEtatNirgescom.setOnClickListener { viewModel.consulterEtat() }
+        // L'identifiant vient des arguments, pas de la session affichée : c'est celle-là que
+        // l'écran montre, et il est connu avant même que la lecture en base soit revenue.
+        binding.btnExporterCsv.setOnClickListener {
+            findNavController().navigate(
+                DetailSessionFragmentDirections.actionDetailToExport(args.idSession)
+            )
+        }
         observeViewModel()
         viewModel.charger(args.idSession)
     }
@@ -64,6 +73,7 @@ class DetailSessionFragment : Fragment() {
                 else -> session.statut
             }
             binding.tvStatut.text = statutTexte
+            binding.btnExporterCsv.isVisible = estExportable(session.statut)
             afficherBlocSync(session)
         }
 

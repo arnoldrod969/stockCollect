@@ -1,9 +1,11 @@
 ---
 id: TASK-9
 title: Exporter en CSV une session autre que la derniere cloturee
-status: To Do
-assignee: []
+status: In Progress
+assignee:
+  - '@claude'
 created_date: '2026-09-18 17:01'
+updated_date: '2026-09-25 11:06'
 labels: []
 dependencies: []
 type: feature
@@ -28,3 +30,24 @@ Piste : passer un idSession en argument Safe Args a la destination Export, et ou
 - [ ] #2 L'ecran Export affiche la session demandee et non systematiquement la plus recente
 - [ ] #3 L'export d'une session deja EXPORTEE reste possible (reecriture d'un fichier perdu)
 <!-- AC:END -->
+
+## Implementation Plan
+
+<!-- SECTION:PLAN:BEGIN -->
+1. nav_graph : l'argument idSession (long, defaut -1L) existe deja sur exportFragment ; ajouter action_detail_to_export depuis detailSessionFragment. Verifier tous les navigate vers Export (seul HistoriqueFragment.btnExporter aujourd'hui, garde le defaut = derniere cloturee).
+2. CsvExportService : regle pure estExportable(statut) = CLOTUREE ou EXPORTEE, utilisee par le service (BROUILLON et statut inconnu refuses). Reexport d'une EXPORTEE : fichier reecrit, ligne ajoutee a exports, marquerExportee reste garde (0 ligne touchee), statut_sync intact.
+3. ExportViewModel : charger(idSession) appele par le fragment avec args.idSession (meme schema que DetailSession) ; -1 -> getMostRecentCloturee, sinon getById filtre par estExportable ; apres export, recharge la meme session demandee.
+4. Historique : bouton Exporter par ligne (item_session_historique), visible CLOTUREE/EXPORTEE seulement, lambda onExporterClick -> actionHistoriqueToExport(idSession).
+5. Detail : bouton Exporter en CSV (layout + fragment seulement, pas le ViewModel), visible hors BROUILLON -> actionDetailToExport(idSession).
+6. Tests : JVM sur estExportable ; instrumente Room en memoire sur CsvExportService (CLOTUREE->EXPORTEE, EXPORTEE->EXPORTEE avec 2 lignes d'audit, BROUILLON refuse, statut_sync inchange) et ExportViewModel (session demandee vs plus recente, BROUILLON non exportable).
+<!-- SECTION:PLAN:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+Constats : exportFragment portait deja idSession (long, -1L) mais personne ne le lisait ; ExportViewModel chargeait toujours getMostRecentCloturee. CsvExportService n'excluait que BROUILLON : un reexport d'EXPORTEE passait deja cote service, marquerExportee renvoyant simplement 0.
+Fait : regle pure estExportable(statut) dans CsvExportService.kt (CLOTUREE/EXPORTEE) utilisee par le service, l'adapter Historique et le Detail. ExportViewModel.charger(idSession) appele par ExportFragment avec args.idSession ; -1 = plus recente cloturee (comportement conserve pour le bouton global de l'Historique) ; session designee non exportable -> null (rien a exporter), jamais une autre. Apres export, la session designee est relue (Exportee, reexportable). Bouton par ligne btn_exporter_ligne dans item_session_historique (visible CLOTUREE/EXPORTEE) -> actionHistoriqueToExport(idSession). Bouton btn_exporter_csv dans le Detail (hors bloc synchro) -> nouvelle action action_detail_to_export. Libelle du bouton Export : 'Generer a nouveau le fichier' pour une EXPORTEE. Format CSV inchange, statut_sync non touche, pas de changement de schema.
+Tests : EstExportableTest (JVM), ExportSessionDesigneeTest (instrumente, Room en memoire, service + ViewModel).
+
+Verification : ./gradlew :app:testDebugUnitTest :app:assembleDebugAndroidTest :app:lintDebug -> BUILD SUCCESSFUL (lint : seul ajout, un HardcodedText sur le nouveau bouton du Detail, comme le reste du fichier). Tests instrumentes non executes (pas d'emulateur) : ./gradlew :app:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.jdcosmetics.stockcollect.ui.export.ExportSessionDesigneeTest. Criteres non coches : a verifier sur emulateur.
+<!-- SECTION:NOTES:END -->

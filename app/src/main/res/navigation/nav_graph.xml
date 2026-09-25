@@ -129,6 +129,8 @@
         android:name="com.jdcosmetics.stockcollect.ui.export.ExportFragment"
         android:label="Exporter"
         tools:layout="@layout/fragment_export">
+        <!-- -1 : aucune session désignée, l'écran prend la plus récente clôturée
+             (ExportViewModel.EXPORT_SESSION_PLUS_RECENTE). -->
         <argument
             android:name="idSession"
             app:argType="long"
@@ -144,6 +146,8 @@
         <argument
             android:name="idSession"
             app:argType="long" />
+        <action android:id="@+id/action_detail_to_export"
+            app:destination="@id/exportFragment" />
     </fragment>
 
 </navigation>

@@ -6,6 +6,7 @@ import com.jdcosmetics.stockcollect.data.db.dao.ArticleDao
 import com.jdcosmetics.stockcollect.data.db.dao.ExportDao
 import com.jdcosmetics.stockcollect.data.db.dao.SessionDao
 import com.jdcosmetics.stockcollect.data.db.entity.ExportEntity
+import com.jdcosmetics.stockcollect.data.db.entity.StatutSession
 import com.jdcosmetics.stockcollect.data.repository.SessionRepository
 import com.jdcosmetics.stockcollect.util.Constants
 import com.jdcosmetics.stockcollect.util.DateUtils
@@ -21,6 +22,14 @@ sealed class ExportResult {
     data class Succes(val nomFichier: String, val nbLignes: Int, val uri: Uri) : ExportResult()
     data class Erreur(val message: String) : ExportResult()
 }
+
+/**
+ * Une session s'exporte une fois clôturée, et **reste** exportable une fois exportée : le fichier
+ * a pu être perdu (clé USB, dossier effacé) alors que la collecte n'existe plus que sur la
+ * tablette. Un brouillon, dont le contenu bouge encore, ne l'est jamais — ni un statut inconnu.
+ */
+fun estExportable(statut: String): Boolean =
+    statut == StatutSession.CLOTUREE || statut == StatutSession.EXPORTEE
 
 @Singleton
 class CsvExportService @Inject constructor(
@@ -38,7 +47,7 @@ class CsvExportService @Inject constructor(
                     "Cette session n'existe plus sur la tablette."
                 )
 
-            if (session.statut == "BROUILLON") {
+            if (!estExportable(session.statut)) {
                 return@withContext ExportResult.Erreur(
                     "Clôturez la session avant de l'exporter."
                 )
@@ -87,6 +96,9 @@ class CsvExportService @Inject constructor(
                     )
                 )
 
+                // Gardé sur CLOTUREE : pour un réexport la session est déjà EXPORTEE, aucune ligne
+                // n'est touchée et c'est voulu — le cycle de vie ne revient jamais en arrière, et
+                // le statut de synchro n'a rien à voir avec l'export. Seul l'audit s'allonge.
                 sessionDao.marquerExportee(idSession)
 
                 ExportResult.Succes(nomFichier, lignes.size, outputUri)

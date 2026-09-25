@@ -13,10 +13,12 @@ import com.jdcosmetics.stockcollect.data.db.entity.StatutSession
 import com.jdcosmetics.stockcollect.data.db.entity.StatutSync
 import com.jdcosmetics.stockcollect.data.db.entity.TypeOperation
 import com.jdcosmetics.stockcollect.databinding.ItemSessionHistoriqueBinding
+import com.jdcosmetics.stockcollect.domain.service.estExportable
 import com.jdcosmetics.stockcollect.util.DateUtils
 
 class HistoriqueAdapter(
-    private val onItemClick: (SessionEntity) -> Unit = {}
+    private val onItemClick: (SessionEntity) -> Unit = {},
+    private val onExporterClick: (SessionEntity) -> Unit = {}
 ) : ListAdapter<SessionEntity, HistoriqueAdapter.ViewHolder>(DiffCallback) {
 
     inner class ViewHolder(private val binding: ItemSessionHistoriqueBinding) :
@@ -50,6 +52,11 @@ class HistoriqueAdapter(
                     )
                 )
             }
+
+            // Même règle que le service : un brouillon n'offre jamais l'export, une session déjà
+            // exportée si (fichier perdu à réécrire).
+            binding.btnExporterLigne.isVisible = estExportable(session.statut)
+            binding.btnExporterLigne.setOnClickListener { onExporterClick(session) }
 
             binding.root.setOnClickListener { onItemClick(session) }
         }

@@ -44,6 +44,11 @@ class HistoriqueFragment : Fragment() {
                         findNavController().navigate(action)
                     }
                 }
+            },
+            onExporterClick = { session ->
+                findNavController().navigate(
+                    HistoriqueFragmentDirections.actionHistoriqueToExport(session.idSession)
+                )
             }
         )
         binding.rvSessions.apply {
