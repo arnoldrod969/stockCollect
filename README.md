@@ -33,16 +33,23 @@ git switch v1-original              # ou : git worktree add ../stockCollect-v1 v
 
 ## Attention : installer la V1 sur une tablette qui a déjà la V2
 
-La V1 et la V2 ont le **même `applicationId` et le même `versionCode` (1)**. Android accepte donc
-d'installer la V1 par-dessus la V2 **sans aucun avertissement**. Au premier lancement, Room trouve
-une base en version 3 alors que le code attend la version 1 : `fallbackToDestructiveMigration()`
-autorise aussi les rétrogradations, donc **la base est effacée et recréée vide** — catalogue,
-sessions en cours et historique compris.
+La V1 et la V2 ont le même `applicationId`. La V1 est en `versionCode = 1`, la V2 en
+`versionCode = 2` : **Android refuse donc d'installer la V1 par-dessus la V2** (erreur de
+rétrogradation, `INSTALL_FAILED_VERSION_DOWNGRADE`). C'est voulu.
 
-Avant de réinstaller la V1 sur une tablette qui a tourné en V2 :
+Les deux façons de passer outre **effacent les données** :
+
+- **désinstaller la V2 d'abord** : Android supprime la base avec l'application ;
+- **forcer la rétrogradation** (`adb install -r -d`, accepté pour un build debug) : au premier
+  lancement, Room trouve une base en version 3 alors que le code attend la version 1, et
+  `fallbackToDestructiveMigration()` autorise aussi les rétrogradations — **la base est effacée
+  et recréée vide**, sans avertissement.
+
+Dans les deux cas, catalogue, sessions en cours et historique disparaissent. Avant de revenir à la
+V1 sur une tablette qui a tourné en V2 :
 
 1. Clôturer et **exporter en CSV** (ou synchroniser) toutes les sessions à conserver ;
 2. Garder à portée les fichiers catalogue et `art_codebarre` pour les réimporter ;
-3. Installer la V1, puis réimporter le catalogue et les correspondances.
+3. Désinstaller la V2, installer la V1, puis réimporter le catalogue et les correspondances.
 
 Dans l'autre sens (V1 → V2), aucune perte : la V2 embarque la migration 1 → 2 → 3.
