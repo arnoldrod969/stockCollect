@@ -10,6 +10,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
+import androidx.navigation.fragment.navArgs
 import com.google.android.material.snackbar.Snackbar
 import com.jdcosmetics.stockcollect.data.db.entity.StatutSession
 import com.jdcosmetics.stockcollect.data.db.entity.TypeOperation
@@ -24,6 +25,7 @@ class ExportFragment : Fragment() {
     private val binding get() = _binding!!
 
     private val viewModel: ExportViewModel by viewModels()
+    private val args: ExportFragmentArgs by navArgs()
 
     private val createFileLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
@@ -45,6 +47,7 @@ class ExportFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
         setupListeners()
         observeViewModel()
+        viewModel.charger(args.idSession)
     }
 
     private fun setupListeners() {
@@ -69,6 +72,11 @@ class ExportFragment : Fragment() {
                     else -> session.statut
                 }
                 binding.tvStatut.text = statutTexte
+                // Une session déjà exportée se réexporte (fichier perdu) : le bouton le dit, pour
+                // qu'on ne croie pas relancer le premier export.
+                binding.btnExporter.text =
+                    if (session.statut == StatutSession.EXPORTEE) "⬇ Générer à nouveau le fichier"
+                    else "⬇ Générer et télécharger"
             } else {
                 binding.groupSession.isVisible = false
                 binding.tvAucuneSession.isVisible = true
@@ -87,7 +95,9 @@ class ExportFragment : Fragment() {
                     binding.btnExporter.isEnabled = true
                     Snackbar.make(
                         binding.root,
-                        "\u2713 ${state.nomFichier} (${state.nbLignes} lignes) \u2014 enregistré dans Téléchargements",
+                        // Le fichier va l\u00e0 o\u00f9 l'utilisateur l'a rang\u00e9 via le s\u00e9lecteur Android :
+                        // annoncer \u00ab T\u00e9l\u00e9chargements \u00bb \u00e9tait faux d\u00e8s qu'il choisissait ailleurs.
+                        "\u2713 Export termin\u00e9 : ${state.nomFichier} (${state.nbLignes} lignes)",
                         Snackbar.LENGTH_LONG
                     ).show()
                     viewModel.resetState()

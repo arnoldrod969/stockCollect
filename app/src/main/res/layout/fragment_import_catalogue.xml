@@ -9,7 +9,8 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:padding="16dp">
+        android:paddingHorizontal="@dimen/screen_padding_horizontal"
+        android:paddingVertical="16dp">
 
         <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
@@ -89,7 +90,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="Derni\u00e8re mise \u00e0 jour"
-                    android:textSize="11sp"
+                    android:textSize="12sp"
                     android:textColor="@color/on_surface_variant"
                     android:layout_marginTop="8dp" />
 
@@ -103,6 +104,20 @@
 
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
+
+        <!--
+          Sans connexion Nirgescom r\u00e9gl\u00e9e, les deux mises \u00e0 jour par l'API sont masqu\u00e9es et ce
+          message dit o\u00f9 les activer. Les imports par fichier, eux, restent toujours l\u00e0.
+        -->
+        <TextView
+            android:id="@+id/tv_nirgescom_non_configure"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="16dp"
+            android:text="Mise \u00e0 jour depuis Nirgescom indisponible : r\u00e9glez d'abord l'adresse du serveur, la cl\u00e9 d'API et le d\u00e9p\u00f4t dans Param\u00e8tres (depuis l'accueil). L'import par fichier reste possible."
+            android:textSize="12sp"
+            android:textColor="@color/on_surface_variant"
+            android:visibility="gone" />
 
         <!-- \u00c9tape 1 \u2014 Catalogue articles -->
         <TextView
@@ -139,6 +154,7 @@
                     <TextView
                         android:layout_width="40dp"
                         android:layout_height="40dp"
+                        android:importantForAccessibility="no"
                         android:text="\uD83D\uDCC4"
                         android:textSize="24sp"
                         android:gravity="center" />
@@ -154,7 +170,7 @@
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:text="catalogue_articles.csv"
-                            android:textSize="13sp"
+                            android:textSize="15sp"
                             android:textStyle="bold"
                             android:textColor="@color/on_surface" />
 
@@ -162,7 +178,7 @@
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:text="~2 718 articles attendus"
-                            android:textSize="11sp"
+                            android:textSize="12sp"
                             android:textColor="@color/on_surface_variant" />
                     </LinearLayout>
                 </LinearLayout>
@@ -179,7 +195,7 @@
                         android:layout_height="wrap_content"
                         android:padding="10dp"
                         android:text="\u26A0 L'import remplace le catalogue existant."
-                        android:textSize="11sp"
+                        android:textSize="12sp"
                         android:textColor="@color/amber_on_container" />
                 </com.google.android.material.card.MaterialCardView>
 
@@ -193,8 +209,25 @@
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/btn_choisir_catalogue"
                     android:layout_width="match_parent"
-                    android:layout_height="48dp"
+                    android:layout_height="wrap_content"
+                    android:minHeight="@dimen/button_height"
+                    android:insetTop="0dp"
+                    android:insetBottom="0dp"
                     android:text="\uD83D\uDCC1 Choisir le fichier"
+                    app:cornerRadius="10dp" />
+
+                <!-- Visible seulement quand la connexion Nirgescom est r\u00E9gl\u00E9e (fragment). -->
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btn_catalogue_nirgescom"
+                    style="@style/Widget.Material3.Button.OutlinedButton"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:minHeight="@dimen/button_height"
+                    android:insetTop="0dp"
+                    android:insetBottom="0dp"
+                    android:text="Mettre \u00E0 jour le catalogue depuis Nirgescom"
+                    android:visibility="gone"
                     app:cornerRadius="10dp" />
 
             </LinearLayout>
@@ -236,6 +269,7 @@
                     <TextView
                         android:layout_width="40dp"
                         android:layout_height="40dp"
+                        android:importantForAccessibility="no"
                         android:text="\uD83D\uDCCB"
                         android:textSize="24sp"
                         android:gravity="center" />
@@ -251,7 +285,7 @@
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:text="art_codebarre.csv"
-                            android:textSize="13sp"
+                            android:textSize="15sp"
                             android:textStyle="bold"
                             android:textColor="@color/on_surface" />
 
@@ -259,10 +293,32 @@
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:text="~266 entr\u00e9es attendues"
-                            android:textSize="11sp"
+                            android:textSize="12sp"
                             android:textColor="@color/on_surface_variant" />
                     </LinearLayout>
                 </LinearLayout>
+
+                <!--
+                  L'étape 2 n'avait aucun avertissement, alors qu'elle fait un deleteAll suivi
+                  d'une réinsertion complète — la seule opération destructrice de l'écran qui
+                  n'était pas annoncée. Le texte est posé depuis le fragment : il change selon
+                  qu'un catalogue est déjà là ou non.
+                -->
+                <com.google.android.material.card.MaterialCardView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="12dp"
+                    app:cardElevation="0dp"
+                    app:cardCornerRadius="8dp"
+                    app:cardBackgroundColor="@color/amber_container">
+                    <TextView
+                        android:id="@+id/tv_correspondance_avertissement"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:padding="10dp"
+                        android:textSize="12sp"
+                        android:textColor="@color/amber_on_container" />
+                </com.google.android.material.card.MaterialCardView>
 
                 <ProgressBar
                     android:id="@+id/progress_correspondance"
@@ -274,10 +330,26 @@
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/btn_choisir_correspondance"
                     android:layout_width="match_parent"
-                    android:layout_height="48dp"
+                    android:layout_height="wrap_content"
+                    android:minHeight="@dimen/button_height"
+                    android:insetTop="0dp"
+                    android:insetBottom="0dp"
                     android:text="\uD83D\uDCC1 Choisir le fichier"
                     app:cornerRadius="10dp"
                     app:backgroundTint="@color/green_secondary" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btn_correspondance_nirgescom"
+                    style="@style/Widget.Material3.Button.OutlinedButton"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:minHeight="@dimen/button_height"
+                    android:insetTop="0dp"
+                    android:insetBottom="0dp"
+                    android:text="Mettre \u00E0 jour les codes-barres depuis Nirgescom"
+                    android:visibility="gone"
+                    app:cornerRadius="10dp" />
 
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>

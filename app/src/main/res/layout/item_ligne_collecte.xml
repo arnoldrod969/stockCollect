@@ -1,25 +1,55 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+  Ligne de collecte : la vue la plus manipulée de l'app, debout et parfois d'une seule main.
+  Les trois commandes faisaient 36 dp de côté et se touchaient — sous le minimum Material de
+  48 dp, et sans les 8 dp qui évitent d'appuyer sur « supprimer » en visant « + ».
+  `inset*=0dp` : un MaterialButton applique 6 dp d'encart haut et bas à son fond, la surface
+  visible d'un bouton de 48 dp n'en faisait donc que 36 — c'est elle que l'œil vise.
+-->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent" android:layout_height="wrap_content"
     android:orientation="horizontal" android:gravity="center_vertical"
-    android:padding="12dp" android:background="?attr/selectableItemBackground">
-    <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:orientation="vertical">
-        <TextView android:id="@+id/tv_nom_produit" android:layout_width="wrap_content" android:layout_height="wrap_content"
-            android:textSize="13sp" android:textStyle="bold"/>
+    android:paddingHorizontal="12dp" android:paddingVertical="8dp"
+    android:background="?attr/selectableItemBackground">
+    <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content"
+        android:layout_weight="1" android:orientation="vertical"
+        android:layout_marginEnd="8dp">
+        <TextView android:id="@+id/tv_nom_produit" android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:textSize="15sp" android:textStyle="bold" android:textColor="@color/on_surface"/>
         <TextView android:id="@+id/tv_code_produit" android:layout_width="wrap_content" android:layout_height="wrap_content"
-            android:textSize="11sp" android:textColor="@color/on_surface_variant"/>
+            android:textSize="12sp" android:textColor="@color/on_surface_variant"/>
     </LinearLayout>
     <com.google.android.material.button.MaterialButton android:id="@+id/btn_moins"
-        android:layout_width="36dp" android:layout_height="36dp" android:text="−" android:textSize="18sp"
-        android:padding="0dp" app:cornerRadius="8dp"/>
-    <TextView android:id="@+id/tv_quantite" android:layout_width="48dp" android:layout_height="wrap_content"
-        android:gravity="center" android:textSize="16sp" android:textStyle="bold"/>
+        android:layout_width="@dimen/touch_target_min" android:layout_height="@dimen/touch_target_min"
+        android:text="−" android:textSize="20sp"
+        android:contentDescription="@string/cd_diminuer_quantite"
+        android:insetTop="0dp" android:insetBottom="0dp"
+        android:minWidth="0dp" android:minHeight="0dp" android:padding="0dp"
+        app:cornerRadius="8dp"/>
+    <EditText android:id="@+id/et_quantite"
+        android:layout_width="64dp" android:layout_height="@dimen/touch_target_min"
+        android:layout_marginHorizontal="8dp"
+        android:gravity="center" android:textSize="16sp" android:textStyle="bold"
+        android:textColor="@color/on_surface"
+        android:contentDescription="@string/cd_quantite"
+        android:inputType="numberDecimal" android:selectAllOnFocus="true"
+        android:imeOptions="actionDone" android:maxLines="1"
+        android:background="@drawable/bg_champ_quantite"/>
     <com.google.android.material.button.MaterialButton android:id="@+id/btn_plus"
-        android:layout_width="36dp" android:layout_height="36dp" android:text="+" android:textSize="18sp"
-        android:padding="0dp" app:cornerRadius="8dp"/>
+        android:layout_width="@dimen/touch_target_min" android:layout_height="@dimen/touch_target_min"
+        android:text="+" android:textSize="20sp"
+        android:contentDescription="@string/cd_augmenter_quantite"
+        android:insetTop="0dp" android:insetBottom="0dp"
+        android:minWidth="0dp" android:minHeight="0dp" android:padding="0dp"
+        app:cornerRadius="8dp"/>
     <com.google.android.material.button.MaterialButton android:id="@+id/btn_supprimer"
-        android:layout_width="36dp" android:layout_height="36dp" android:text="✕" android:textSize="14sp"
-        android:layout_marginStart="4dp" android:padding="0dp" app:cornerRadius="8dp"
+        android:layout_width="@dimen/touch_target_min" android:layout_height="@dimen/touch_target_min"
+        android:text="✕" android:textSize="16sp"
+        android:contentDescription="@string/cd_supprimer_ligne"
+        android:layout_marginStart="8dp"
+        android:insetTop="0dp" android:insetBottom="0dp"
+        android:minWidth="0dp" android:minHeight="0dp" android:padding="0dp"
+        app:cornerRadius="8dp"
         app:backgroundTint="@color/red_container" android:textColor="@color/red_on_container"/>
 </LinearLayout>

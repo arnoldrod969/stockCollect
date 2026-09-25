@@ -4,61 +4,65 @@
     android:layout_width="match_parent" android:layout_height="match_parent"
     android:background="@color/surface_variant">
     <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
-        android:orientation="vertical" android:padding="16dp">
+        android:orientation="vertical"
+        android:paddingHorizontal="@dimen/screen_padding_horizontal" android:paddingVertical="16dp">
         <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
             android:text="Type d'opération" android:textSize="13sp"
             android:textColor="@color/on_surface_variant" android:layout_marginBottom="8dp"/>
+        <!--
+          Hauteur libre plutôt que 60 dp fixes : à 130 % de taille de police système, les deux
+          lignes « Inventaire / Comptage physique » débordaient de la carte et se faisaient rogner.
+        -->
         <com.google.android.material.card.MaterialCardView android:id="@+id/card_inventaire"
-            android:layout_width="match_parent" android:layout_height="60dp"
-            android:layout_marginBottom="8dp" app:cardElevation="2dp" app:cardCornerRadius="12dp"
-            app:strokeColor="@color/blue_primary">
-            <LinearLayout android:layout_width="match_parent" android:layout_height="match_parent"
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:minHeight="60dp"
+            android:layout_marginBottom="16dp" app:cardElevation="2dp" app:cardCornerRadius="12dp"
+            app:strokeWidth="1dp" app:strokeColor="@color/blue_primary">
+            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
                 android:orientation="horizontal" android:gravity="center_vertical" android:padding="14dp">
-                <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1">
+                <!--
+                  TextView de largeur nulle, conservé uniquement pour son requestFocus : sans lui,
+                  et_observations prend le focus a l'ouverture et fait surgir le clavier. Il portait un
+                  layout_weight="1" qui repoussait le libellé dans la moitié droite de la carte —
+                  invisible tant qu'il y avait trois cartes, franchement de travers avec une seule.
+                -->
+                <TextView android:layout_width="0dp" android:layout_height="0dp">
                     <requestFocus/></TextView>
-                <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1"
+                <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
                     android:orientation="vertical">
                     <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-                        android:text="Inventaire" android:textSize="14sp" android:textStyle="bold"/>
+                        android:text="Inventaire" android:textSize="15sp" android:textStyle="bold"
+                        android:textColor="@color/on_surface"/>
+                    <!--
+                      Dit que c'est le seul type possible. Sans cette précision, la carte a
+                      exactement le vocabulaire d'une option sélectionnable — titre gras,
+                      sous-titre, liseré — et un tap dessus ne produit rien.
+                    -->
                     <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-                        android:text="Comptage physique" android:textSize="11sp" android:textColor="@color/on_surface_variant"/>
+                        android:text="Comptage physique — seul type disponible" android:textSize="12sp"
+                        android:textColor="@color/on_surface_variant"/>
                 </LinearLayout>
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
-        <com.google.android.material.card.MaterialCardView android:id="@+id/card_entree"
-            android:layout_width="match_parent" android:layout_height="60dp"
-            android:layout_marginBottom="8dp" app:cardElevation="1dp" app:cardCornerRadius="12dp"
-            android:alpha="0.45" android:clickable="false" android:focusable="false">
-            <LinearLayout android:layout_width="match_parent" android:layout_height="match_parent"
-                android:orientation="horizontal" android:gravity="center_vertical" android:padding="14dp">
-                <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical">
-                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-                        android:text="Entrée de stock" android:textSize="14sp" android:textStyle="bold"/>
-                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-                        android:text="Bientôt disponible" android:textSize="11sp" android:textColor="@color/on_surface_variant"/>
-                </LinearLayout>
-            </LinearLayout>
-        </com.google.android.material.card.MaterialCardView>
-        <com.google.android.material.card.MaterialCardView android:id="@+id/card_sortie"
-            android:layout_width="match_parent" android:layout_height="60dp"
-            android:layout_marginBottom="16dp" app:cardElevation="1dp" app:cardCornerRadius="12dp"
-            android:alpha="0.45" android:clickable="false" android:focusable="false">
-            <LinearLayout android:layout_width="match_parent" android:layout_height="match_parent"
-                android:orientation="horizontal" android:gravity="center_vertical" android:padding="14dp">
-                <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical">
-                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-                        android:text="Sortie de stock" android:textSize="14sp" android:textStyle="bold"/>
-                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-                        android:text="Bientôt disponible" android:textSize="11sp" android:textColor="@color/on_surface_variant"/>
-                </LinearLayout>
-            </LinearLayout>
-        </com.google.android.material.card.MaterialCardView>
-        <com.google.android.material.textfield.TextInputLayout android:layout_width="match_parent"
-            android:layout_height="wrap_content" style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
-            android:hint="Dépôt / Point de vente (optionnel)" android:layout_marginBottom="12dp">
-            <com.google.android.material.textfield.TextInputEditText android:id="@+id/et_lieu"
-                android:layout_width="match_parent" android:layout_height="wrap_content"/>
-        </com.google.android.material.textfield.TextInputLayout>
+        <!--
+          Entrée / Sortie de stock ont été retirées : le contrat de l'API Nirgescom n'accepte que
+          INVENTAIRE (puis COMMANDE à l'étape 2), toute autre valeur serait rejetée en 422.
+          Les constantes TypeOperation.ENTREE / SORTIE restent en revanche définies — des sessions
+          de ces types peuvent exister sur des tablettes déjà déployées et doivent rester
+          consultables et exportables dans l'Historique.
+        -->
+        <!--
+          Le dépôt n'est plus saisi ici : c'est la même notion que le magasin des Paramètres, et il
+          est désormais choisi là-bas dans la liste fournie par l'API. La session en garde un
+          instantané. Ce n'est qu'un rappel, non modifiable.
+        -->
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:text="Dépôt" android:textSize="13sp"
+            android:textColor="@color/on_surface_variant" android:layout_marginBottom="4dp"/>
+        <TextView android:id="@+id/tv_depot"
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:textSize="15sp" android:textColor="@color/on_surface"
+            android:layout_marginBottom="16dp"/>
         <com.google.android.material.textfield.TextInputLayout android:layout_width="match_parent"
             android:layout_height="wrap_content" style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
             android:hint="Observations (optionnel)" android:layout_marginBottom="16dp">
@@ -67,7 +71,8 @@
                 android:inputType="textMultiLine" android:minLines="2"/>
         </com.google.android.material.textfield.TextInputLayout>
         <com.google.android.material.button.MaterialButton android:id="@+id/btn_commencer_saisie"
-            android:layout_width="match_parent" android:layout_height="52dp"
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:minHeight="@dimen/button_height" android:insetTop="0dp" android:insetBottom="0dp"
             android:text="Commencer la saisie" app:cornerRadius="10dp"/>
     </LinearLayout>
 </ScrollView>

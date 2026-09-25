@@ -14,8 +14,8 @@ android {
         applicationId = "com.jdcosmetics.stockcollect"
         minSdk = 26          // Android 8.0 Oreo
         targetSdk = 34
-        versionCode = 1
-        versionName = "1.0.0"
+        versionCode = 2         // > V1 (branche v1-original) : Android refuse de reinstaller la V1 par-dessus
+        versionName = "2.0.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
@@ -46,6 +46,13 @@ android {
     buildFeatures {
         viewBinding = true
         buildConfig = true
+    }
+
+    // MigrationTestHelper lit les schémas exportés depuis les assets du test instrumenté.
+    sourceSets {
+        getByName("androidTest") {
+            assets.srcDirs("$projectDir/schemas")
+        }
     }
 }
 
@@ -85,8 +92,9 @@ dependencies {
     implementation(libs.camerax.lifecycle)
     implementation(libs.camerax.view)
 
-    // OpenCSV (import/export CSV)
-    implementation(libs.opencsv)
+    // Pas d'OpenCSV : le parsing est fait à la main dans domain/service/CsvParser.kt, qui doit
+    // gérer un fichier source dont les virgules ne sont pas échappées — aucun parseur conforme
+    // ne sait le faire. La dépendance était déclarée et importée nulle part.
 
     // Coroutines
     implementation(libs.kotlinx.coroutines.android)
@@ -95,9 +103,19 @@ dependencies {
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
+    // MigrationTestHelper : rejoue une migration sur une vraie base et la confronte au schéma
+    // exporté. Seul moyen de prouver qu'une migration ne casse pas les tablettes déjà déployées.
+    androidTestImplementation(libs.androidx.room.testing)
 }
 
 // Supprime les warnings kapt inutiles
 kapt {
     correctErrorTypes = true
+
+    arguments {
+        // Room exporte le schéma JSON dans app/schemas/ — à committer.
+        // Sans cet argument, exportSchema = true ne produit rien (juste un warning au build) et
+        // il n'existe aucune référence pour écrire ni valider une migration.
+        arg("room.schemaLocation", "$projectDir/schemas")
+    }
 }

@@ -1,6 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <style name="Theme.StockCollect" parent="Theme.Material3.DayNight">
+    <!--
+      Parent Light et non DayNight : la palette de `colors.xml` n'a pas de variante nuit et les
+      layouts posent des couleurs claires en dur (`@color/surface`, `@color/white`). En mode nuit,
+      DayNight ne redéfinissait que la moitié des rôles — cartes et dialogues passaient au sombre
+      pendant que le texte restait noir. Tant qu'il n'y a pas de `values-night`, mieux vaut un
+      thème clair assumé qu'un thème sombre à moitié appliqué.
+    -->
+    <style name="Theme.StockCollect" parent="Theme.Material3.Light">
         <!-- Couleur principale : bleu JD Cosmetics -->
         <item name="colorPrimary">@color/blue_primary</item>
         <item name="colorOnPrimary">@color/white</item>
@@ -10,14 +17,40 @@
         <!-- Couleur secondaire -->
         <item name="colorSecondary">@color/green_secondary</item>
         <item name="colorOnSecondary">@color/white</item>
+        <item name="colorSecondaryContainer">@color/green_container</item>
+        <item name="colorOnSecondaryContainer">@color/green_on_container</item>
 
-        <!-- Surface -->
+        <!-- Erreur -->
+        <item name="colorError">@color/red_on_container</item>
+        <item name="colorOnError">@color/white</item>
+        <item name="colorErrorContainer">@color/red_container</item>
+        <item name="colorOnErrorContainer">@color/red_on_container</item>
+
+        <!--
+          Surfaces : sans ces rôles, les composants Material retombaient sur la palette de base
+          M3, teintée violet — cartes en #F7F2FA sur un fond #F4F6F9, contours de champs en
+          #79747E. Les layouts posent déjà les neutres de la marque en dur ; on les fait suivre
+          aux composants.
+        -->
         <item name="colorSurface">@color/surface</item>
         <item name="colorOnSurface">@color/on_surface</item>
+        <item name="colorSurfaceVariant">@color/surface_variant</item>
+        <item name="colorOnSurfaceVariant">@color/on_surface_variant</item>
+        <item name="colorSurfaceContainerLowest">@color/white</item>
+        <item name="colorSurfaceContainerLow">@color/white</item>
+        <item name="colorSurfaceContainer">@color/white</item>
+        <item name="colorSurfaceContainerHigh">@color/white</item>
+        <item name="colorSurfaceContainerHighest">@color/surface_container_high</item>
+        <item name="colorOutline">@color/outline</item>
+        <item name="colorOutlineVariant">@color/border</item>
 
         <!-- Toolbar -->
         <item name="actionBarStyle">@style/AppBarStyle</item>
         <item name="toolbarStyle">@style/ToolbarStyle</item>
+
+        <!-- La barre d'état reste dans la teinte de marque plutôt que blanche au-dessus de l'ActionBar bleue. -->
+        <item name="android:statusBarColor">@color/blue_dark</item>
+        <item name="android:windowLightStatusBar">false</item>
     </style>
 
     <style name="AppBarStyle" parent="Widget.Material3.ActionBar.Solid">

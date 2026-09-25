@@ -9,7 +9,9 @@ import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.LinearLayoutManager
+import com.jdcosmetics.stockcollect.R
 import com.jdcosmetics.stockcollect.data.db.entity.StatutSession
+import com.jdcosmetics.stockcollect.data.db.entity.TypeOperation
 import com.jdcosmetics.stockcollect.databinding.FragmentHistoriqueBinding
 import dagger.hilt.android.AndroidEntryPoint
 
@@ -43,6 +45,16 @@ class HistoriqueFragment : Fragment() {
                         findNavController().navigate(action)
                     }
                 }
+            },
+            onExporterClick = { session ->
+                // Double tap : le premier navigate a déjà quitté l'Historique, le second lèverait
+                // « action unknown to the current destination ».
+                val nav = findNavController()
+                if (nav.currentDestination?.id == R.id.historiqueFragment) {
+                    nav.navigate(
+                        HistoriqueFragmentDirections.actionHistoriqueToExport(session.idSession)
+                    )
+                }
             }
         )
         binding.rvSessions.apply {
@@ -51,9 +63,11 @@ class HistoriqueFragment : Fragment() {
         }
 
         binding.chipTous.setOnClickListener { viewModel.filtrer(null) }
-        binding.chipInventaire.setOnClickListener { viewModel.filtrer("INVENTAIRE") }
-        binding.chipEntree.setOnClickListener { viewModel.filtrer("ENTREE") }
-        binding.chipSortie.setOnClickListener { viewModel.filtrer("SORTIE") }
+        // ENTREE et SORTIE ne sont plus créables, mais des sessions de ces types peuvent exister
+        // sur les tablettes déployées : leurs puces restent pour les retrouver.
+        binding.chipInventaire.setOnClickListener { viewModel.filtrer(TypeOperation.INVENTAIRE) }
+        binding.chipEntree.setOnClickListener { viewModel.filtrer(TypeOperation.ENTREE) }
+        binding.chipSortie.setOnClickListener { viewModel.filtrer(TypeOperation.SORTIE) }
 
         binding.btnExporter.setOnClickListener {
             findNavController().navigate(

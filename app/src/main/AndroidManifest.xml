@@ -6,19 +6,36 @@
     <uses-feature android:name="android.hardware.camera" android:required="false" />
     <uses-feature android:name="android.hardware.camera.autofocus" android:required="false" />
 
-    <!-- Stockage — lecture fichiers CSV à importer -->
-    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"
-        android:maxSdkVersion="32" />
-    <!-- Android 13+ -->
-    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES"
-        android:minSdkVersion="33" />
+    <!--
+      Pas de permission de stockage : import comme export passent par le Storage Access
+      Framework (ACTION_OPEN_DOCUMENT / ACTION_CREATE_DOCUMENT). L'utilisateur choisit le
+      fichier lui-même et le système délègue l'accès à cet URI précis — READ_EXTERNAL_STORAGE
+      et READ_MEDIA_IMAGES étaient demandées pour rien, et READ_MEDIA_IMAGES ne couvre de
+      toute façon que les images, jamais un CSV.
+    -->
 
     <!-- Vibration pour retour haptique scan -->
     <uses-permission android:name="android.permission.VIBRATE" />
 
+    <!--
+      Synchro WiFi vers l'API Nirgescom, sur le LAN du magasin. L'app reste utilisable entièrement
+      hors ligne : la collecte, l'import et l'export CSV ne dépendent d'aucun réseau, et la synchro
+      est un canal supplémentaire, pas un remplacement.
+    -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+
+    <!--
+      allowBackup="false" : la sauvegarde automatique Android copie la base Room telle quelle et
+      peut la restaurer sur une autre tablette. Deux magasiniers se retrouveraient avec les mêmes
+      id_session, donc les mêmes hash de lignes côté serveur — la synchro de l'un écraserait
+      silencieusement celle de l'autre. Les données de collecte sont censées partir par l'export
+      CSV et la synchro WiFi, pas par un canal de sauvegarde invisible.
+    -->
     <application
         android:name=".StockCollectApp"
-        android:allowBackup="true"
+        android:allowBackup="false"
+        android:networkSecurityConfig="@xml/network_security_config"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"

@@ -4,9 +4,11 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
 import androidx.navigation.fragment.findNavController
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.jdcosmetics.stockcollect.R
 import com.jdcosmetics.stockcollect.data.db.entity.TypeOperation
 import com.jdcosmetics.stockcollect.databinding.FragmentNouvelleSessionBinding
@@ -19,7 +21,9 @@ class NouvelleSessionFragment : Fragment() {
     private val binding get() = _binding!!
 
     private val viewModel: SaisieViewModel by activityViewModels()
-    private var typeSelectionne = TypeOperation.INVENTAIRE
+    // Un seul type reste proposable (cf. fragment_nouvelle_session.xml). La variable subsiste
+    // plutôt qu'un littéral en dur : COMMANDE arrivera à l'étape 2 et le choix redeviendra réel.
+    private val typeSelectionne = TypeOperation.INVENTAIRE
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?
@@ -30,29 +34,34 @@ class NouvelleSessionFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        setupTypeSelection()
+        afficherDepot()
         setupListeners()
         observeViewModel()
     }
 
-    private fun setupTypeSelection() {
-        marquerTypeSelectionne()
-
-        binding.cardInventaire.setOnClickListener {
-            typeSelectionne = TypeOperation.INVENTAIRE
-            marquerTypeSelectionne()
+    /**
+     * Rappel de ce qui sera inscrit dans la session. Une tablette non configurée reste utilisable —
+     * la collecte et l'export CSV n'ont pas besoin du réseau — mais l'écran doit le dire, sans quoi
+     * la session partirait sans dépôt sans que personne ne l'ait vu.
+     */
+    private fun afficherDepot() {
+        val magasin = viewModel.magasinConfigure
+        binding.tvDepot.text = magasin.ifBlank {
+            "Aucun dépôt réglé. La session ne pourra pas être envoyée à Nirgescom, seulement " +
+                "exportée en CSV. Réglez le dépôt dans Paramètres."
         }
-    }
-
-    private fun marquerTypeSelectionne() {
-        binding.cardInventaire.strokeWidth = 3
+        binding.tvDepot.setTextColor(
+            ContextCompat.getColor(
+                requireContext(),
+                if (magasin.isBlank()) R.color.red_on_container else R.color.on_surface
+            )
+        )
     }
 
     private fun setupListeners() {
         binding.btnCommencerSaisie.setOnClickListener {
-            val lieu = binding.etLieu.text?.toString()?.trim()?.takeIf { it.isNotBlank() }
             val observations = binding.etObservations.text?.toString()?.trim()?.takeIf { it.isNotBlank() }
-            viewModel.creerSession(typeSelectionne, lieu, observations)
+            viewModel.creerSession(typeSelectionne, observations)
         }
     }
 
@@ -65,8 +74,16 @@ class NouvelleSessionFragment : Fragment() {
                     findNavController().navigate(action)
                     viewModel.resetState()
                 }
+                is SaisieUiState.BrouillonAutreType -> {
+                    binding.btnCommencerSaisie.isEnabled = true
+                    demanderQuoiFaireDuBrouillon(state)
+                }
                 is SaisieUiState.Erreur -> {
                     binding.btnCommencerSaisie.isEnabled = true
+                    // Sans cet affichage, un échec de création ne se voyait qu'au bouton qui
+                    // redevenait cliquable : l'écran ne bougeait pas et rien n'était dit.
+                    afficherErreur(state.message)
+                    viewModel.resetState()
                 }
                 is SaisieUiState.Loading -> {
                     binding.btnCommencerSaisie.isEnabled = false
@@ -74,6 +91,40 @@ class NouvelleSessionFragment : Fragment() {
                 else -> binding.btnCommencerSaisie.isEnabled = true
             }
         }
+    }
+
+    /**
+     * Un brouillon d'un autre type est en cours. Le reprendre en silence ferait collecter sous un
+     * type que l'utilisateur n'a pas choisi ; la clôture irréversible rend l'erreur coûteuse.
+     *
+     * Inatteignable tant que seul l'inventaire est proposé, mais le cas s'ouvre avec le mode
+     * pré-commande (cf. contrat API, type_operation COMMANDE).
+     */
+    private fun demanderQuoiFaireDuBrouillon(state: SaisieUiState.BrouillonAutreType) {
+        MaterialAlertDialogBuilder(requireContext())
+            .setTitle("Une collecte est déjà en cours")
+            .setMessage(
+                "Un brouillon « ${TypeOperation.label(state.typeBrouillon)} » n'est pas terminé, " +
+                    "alors que vous démarrez « ${TypeOperation.label(state.typeDemande)} ».\n\n" +
+                    "Une seule collecte peut être ouverte à la fois."
+            )
+            .setPositiveButton("Reprendre le brouillon") { _, _ ->
+                viewModel.reprendreBrouillon(state.idSession)
+            }
+            .setNegativeButton("Ne rien faire") { _, _ -> viewModel.resetState() }
+            // Retour ou tap hors du dialogue : sans ce reset, l'état restait BrouillonAutreType
+            // dans le ViewModel partagé, et le dialogue ressurgissait à la prochaine ouverture
+            // de l'écran, avant tout clic.
+            .setOnCancelListener { viewModel.resetState() }
+            .show()
+    }
+
+    private fun afficherErreur(message: String) {
+        MaterialAlertDialogBuilder(requireContext())
+            .setTitle("La session n'a pas démarré")
+            .setMessage(message)
+            .setPositiveButton("Fermer", null)
+            .show()
     }
 
     override fun onDestroyView() {

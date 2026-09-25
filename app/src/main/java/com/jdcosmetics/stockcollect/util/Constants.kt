@@ -13,6 +13,15 @@ object Constants {
     const val COL_CATALOGUE_CODE_BARRE = 1
     // COL 2 ignorée
     const val COL_CATALOGUE_NOM_PRODUIT = 3
+
+    // Nombre de colonnes d'une ligne bien formée.
+    const val COL_CATALOGUE_NB_ATTENDU = 6
+
+    // ATTENTION — ces deux index ne valent que pour une ligne de 6 colonnes exactement.
+    // Le fichier source n'échappe pas les virgules des noms de produits, donc une ligne peut en
+    // compter davantage. Quantité et prix se lisent alors depuis la FIN (avant-dernière et
+    // dernière colonne) : c'est ce que fait CsvParser.mapperCatalogue, qui est le seul point
+    // d'entrée à utiliser pour découper une ligne de catalogue.
     const val COL_CATALOGUE_QUANTITE = 4
     const val COL_CATALOGUE_PRIX = 5
 
@@ -26,8 +35,9 @@ object Constants {
     const val EXPORT_COL_NOM_PRODUIT = "Nom Produit"
     const val EXPORT_COL_QUANTITE = "Quantité"
 
-    // BOM UTF-8 pour compatibilité Excel Windows
-    const val UTF8_BOM = "\uFEFF"
+    // Pas de BOM UTF-8 à l'export, volontairement : le fichier est consommé par un système tiers
+    // qui ne le tolère pas. Conséquence assumée — Excel Windows affiche les accents et l'en-tête
+    // « Quantité » en mojibake. Ne pas réintroduire de BOM pour « réparer » l'affichage.
 
     // Seuil d'erreur import : si > 10% des lignes en erreur → rollback
     const val IMPORT_SEUIL_ERREUR_POURCENTAGE = 0.10

@@ -28,9 +28,19 @@
     <color name="surface_variant">#F4F6F9</color>
     <color name="on_surface_variant">#595959</color>
     <color name="border">#DDDDDD</color>
+    <!--
+      Contour des composants (champs de saisie, boutons outlined). Distinct de `border`, qui ne
+      sert qu'à des séparateurs de 0,5 dp : un contour de contrôle doit atteindre 3:1 avec le fond
+      pour rester visible, #DDDDDD plafonne à 1,3:1. Celui-ci donne 4,3:1 sur blanc.
+    -->
+    <color name="outline">#737B85</color>
+    <color name="surface_container_high">#ECEFF3</color>
 
     <!-- Caméra scan -->
     <color name="scan_overlay">#99000000</color>
+    <!-- Fond des libellés posés sur l'aperçu caméra : le contenu filmé est imprévisible, il faut
+         un voile assez opaque pour garantir le contraste du texte blanc. -->
+    <color name="scan_label_scrim">#CC000000</color>
     <color name="scan_corner">#185FA5</color>
     <color name="scan_line">#99185FA5</color>
 </resources>

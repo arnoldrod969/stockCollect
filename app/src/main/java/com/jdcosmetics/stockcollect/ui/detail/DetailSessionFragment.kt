@@ -4,14 +4,21 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import androidx.core.content.ContextCompat
 import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
+import androidx.navigation.fragment.findNavController
 import androidx.navigation.fragment.navArgs
 import androidx.recyclerview.widget.LinearLayoutManager
+import com.jdcosmetics.stockcollect.R
+import com.jdcosmetics.stockcollect.data.db.entity.SessionEntity
 import com.jdcosmetics.stockcollect.data.db.entity.StatutSession
+import com.jdcosmetics.stockcollect.data.db.entity.StatutSync
 import com.jdcosmetics.stockcollect.data.db.entity.TypeOperation
 import com.jdcosmetics.stockcollect.databinding.FragmentDetailSessionBinding
+import com.jdcosmetics.stockcollect.domain.service.estExportable
+import com.jdcosmetics.stockcollect.ui.afficherStatutSession
 import com.jdcosmetics.stockcollect.util.DateUtils
 import dagger.hilt.android.AndroidEntryPoint
 
@@ -39,6 +46,19 @@ class DetailSessionFragment : Fragment() {
             layoutManager = LinearLayoutManager(requireContext())
             adapter = this@DetailSessionFragment.adapter
         }
+        binding.btnSynchroniser.setOnClickListener { viewModel.synchroniser() }
+        binding.btnEtatNirgescom.setOnClickListener { viewModel.consulterEtat() }
+        // L'identifiant vient des arguments, pas de la session affichée : c'est celle-là que
+        // l'écran montre, et il est connu avant même que la lecture en base soit revenue.
+        binding.btnExporterCsv.setOnClickListener {
+            // Double tap : le premier navigate a déjà quitté le Détail, le second lèverait
+            // « action unknown to the current destination ».
+            val nav = findNavController()
+            if (nav.currentDestination?.id != R.id.detailSessionFragment) return@setOnClickListener
+            nav.navigate(
+                DetailSessionFragmentDirections.actionDetailToExport(args.idSession)
+            )
+        }
         observeViewModel()
         viewModel.charger(args.idSession)
     }
@@ -49,20 +69,71 @@ class DetailSessionFragment : Fragment() {
             binding.tvTypeOperation.text = TypeOperation.label(session.typeOperation)
             binding.tvDateHeure.text = DateUtils.toDisplay(session.dateHeureDebut)
             binding.tvNbLignes.text = "${session.nbLignes} ligne${if (session.nbLignes > 1) "s" else ""}"
-            binding.tvLieu.text = session.lieu?.let { "Lieu : $it" } ?: ""
-            binding.tvObservations.text = session.observations?.let { "Obs. : $it" } ?: ""
-            val statutTexte = when (session.statut) {
-                StatutSession.BROUILLON -> "Brouillon"
-                StatutSession.CLOTUREE -> "Clôturée"
-                StatutSession.EXPORTEE -> "Exportée"
-                else -> session.statut
-            }
-            binding.tvStatut.text = statutTexte
+            binding.tvLieu.text = session.lieu?.let { "Dépôt : $it" } ?: ""
+            binding.tvObservations.text = session.observations?.let { "Observations : $it" } ?: ""
+            binding.tvStatut.afficherStatutSession(session.statut)
+            binding.btnExporterCsv.isVisible = estExportable(session.statut)
+            afficherBlocSync(session)
         }
 
         viewModel.lignes.observe(viewLifecycleOwner) { lignes ->
             adapter.submitList(lignes)
             binding.tvAucuneLigne.isVisible = lignes.isEmpty()
+        }
+
+        viewModel.syncState.observe(viewLifecycleOwner) { state ->
+            binding.progressSync.isVisible = state is SyncUiState.Loading
+            binding.btnSynchroniser.isEnabled = state !is SyncUiState.Loading
+            binding.btnEtatNirgescom.isEnabled = state !is SyncUiState.Loading
+
+            when (state) {
+                is SyncUiState.Succes -> afficherDetailSync(state.message, R.color.green_secondary)
+                is SyncUiState.Echec -> afficherDetailSync(state.message, R.color.red_on_container)
+                else -> Unit
+            }
+        }
+    }
+
+    /**
+     * Le bloc n'apparaît qu'après la clôture : un brouillon n'a rien à envoyer, et son contenu
+     * bougerait encore. Le bouton d'envoi reste offert une fois synchronisée — c'est un renvoi
+     * idempotent côté API, utile quand on doute que l'envoi soit passé.
+     */
+    private fun afficherBlocSync(session: SessionEntity) {
+        val cloturee = session.statut != StatutSession.BROUILLON
+        binding.blocSync.isVisible = cloturee
+        if (!cloturee) return
+
+        binding.tvStatutSync.text = StatutSync.label(session.statutSync)
+        binding.tvStatutSync.setTextColor(
+            ContextCompat.getColor(
+                requireContext(),
+                when (session.statutSync) {
+                    StatutSync.SYNCHRONISEE -> R.color.green_secondary
+                    StatutSync.ECHEC_SYNC -> R.color.red_on_container
+                    else -> R.color.on_surface
+                }
+            )
+        )
+        // « Envoyer » plutôt que « Synchroniser » : le geste est un envoi vers Nirgescom, pas une
+        // mise en accord dans les deux sens.
+        binding.btnSynchroniser.text =
+            if (session.statutSync == StatutSync.SYNCHRONISEE) "Renvoyer" else "Envoyer"
+        binding.btnEtatNirgescom.isVisible = session.statutSync == StatutSync.SYNCHRONISEE
+
+        // L'erreur de la dernière tentative est réaffichée à l'ouverture de l'écran : sans elle, un
+        // magasinier revenant le lendemain ne verrait qu'« Échec » sans jamais savoir pourquoi.
+        val messageStocke = session.messageErreurSync
+        if (viewModel.syncState.value is SyncUiState.Idle && !messageStocke.isNullOrBlank()) {
+            afficherDetailSync(messageStocke, R.color.red_on_container)
+        }
+    }
+
+    private fun afficherDetailSync(message: String, couleur: Int) {
+        binding.tvDetailSync.apply {
+            text = message
+            setTextColor(ContextCompat.getColor(requireContext(), couleur))
+            isVisible = true
         }
     }
 

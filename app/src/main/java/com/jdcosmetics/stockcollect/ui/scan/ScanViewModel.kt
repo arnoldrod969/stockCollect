@@ -40,7 +40,7 @@ class ScanViewModel @Inject constructor(
 
     fun rechercherArticles(query: String) {
         viewModelScope.launch {
-            _searchResults.postValue(articleDao.searchByNomSync(query))
+            _searchResults.postValue(articleDao.searchAllSync(query))
         }
     }
 

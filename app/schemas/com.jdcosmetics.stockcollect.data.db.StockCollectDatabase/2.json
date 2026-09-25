@@ -1,0 +1,429 @@
+{
+  "formatVersion": 1,
+  "database": {
+    "version": 2,
+    "identityHash": "c06940fbc440160ec00a959766bf7ca6",
+    "entities": [
+      {
+        "tableName": "articles",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`code_produit` TEXT NOT NULL, `code_barre_principal` TEXT, `nom_produit` TEXT NOT NULL, `quantite_ref` REAL NOT NULL, `prix` REAL NOT NULL, `date_import` TEXT NOT NULL, PRIMARY KEY(`code_produit`))",
+        "fields": [
+          {
+            "fieldPath": "codeProduit",
+            "columnName": "code_produit",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "codeBarrePrincipal",
+            "columnName": "code_barre_principal",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "nomProduit",
+            "columnName": "nom_produit",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "quantiteRef",
+            "columnName": "quantite_ref",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "prix",
+            "columnName": "prix",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "dateImport",
+            "columnName": "date_import",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "code_produit"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_articles_code_barre_principal",
+            "unique": true,
+            "columnNames": [
+              "code_barre_principal"
+            ],
+            "orders": [],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_articles_code_barre_principal` ON `${TABLE_NAME}` (`code_barre_principal`)"
+          },
+          {
+            "name": "index_articles_nom_produit",
+            "unique": false,
+            "columnNames": [
+              "nom_produit"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_articles_nom_produit` ON `${TABLE_NAME}` (`nom_produit`)"
+          }
+        ],
+        "foreignKeys": []
+      },
+      {
+        "tableName": "art_codebarre",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`code_barre` TEXT NOT NULL, `code_produit` TEXT NOT NULL, `date_import` TEXT NOT NULL, PRIMARY KEY(`code_barre`), FOREIGN KEY(`code_produit`) REFERENCES `articles`(`code_produit`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "codeBarre",
+            "columnName": "code_barre",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "codeProduit",
+            "columnName": "code_produit",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "dateImport",
+            "columnName": "date_import",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "code_barre"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_art_codebarre_code_produit",
+            "unique": false,
+            "columnNames": [
+              "code_produit"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_art_codebarre_code_produit` ON `${TABLE_NAME}` (`code_produit`)"
+          },
+          {
+            "name": "index_art_codebarre_code_barre",
+            "unique": true,
+            "columnNames": [
+              "code_barre"
+            ],
+            "orders": [],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_art_codebarre_code_barre` ON `${TABLE_NAME}` (`code_barre`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "articles",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "code_produit"
+            ],
+            "referencedColumns": [
+              "code_produit"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "sessions",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id_session` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `type_operation` TEXT NOT NULL, `date_heure_debut` TEXT NOT NULL, `date_heure_cloture` TEXT, `statut` TEXT NOT NULL, `lieu` TEXT, `observations` TEXT, `nb_lignes` INTEGER NOT NULL, `uuid_session` TEXT, `statut_sync` TEXT NOT NULL DEFAULT 'NON_SYNCHRONISEE', `date_derniere_tentative` TEXT, `nb_tentatives` INTEGER NOT NULL DEFAULT 0, `message_erreur_sync` TEXT)",
+        "fields": [
+          {
+            "fieldPath": "idSession",
+            "columnName": "id_session",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "typeOperation",
+            "columnName": "type_operation",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "dateHeureDebut",
+            "columnName": "date_heure_debut",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "dateHeureCloture",
+            "columnName": "date_heure_cloture",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "statut",
+            "columnName": "statut",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "lieu",
+            "columnName": "lieu",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "observations",
+            "columnName": "observations",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "nbLignes",
+            "columnName": "nb_lignes",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "uuidSession",
+            "columnName": "uuid_session",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "statutSync",
+            "columnName": "statut_sync",
+            "affinity": "TEXT",
+            "notNull": true,
+            "defaultValue": "'NON_SYNCHRONISEE'"
+          },
+          {
+            "fieldPath": "dateDerniereTentative",
+            "columnName": "date_derniere_tentative",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "nbTentatives",
+            "columnName": "nb_tentatives",
+            "affinity": "INTEGER",
+            "notNull": true,
+            "defaultValue": "0"
+          },
+          {
+            "fieldPath": "messageErreurSync",
+            "columnName": "message_erreur_sync",
+            "affinity": "TEXT",
+            "notNull": false
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id_session"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_sessions_statut",
+            "unique": false,
+            "columnNames": [
+              "statut"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_sessions_statut` ON `${TABLE_NAME}` (`statut`)"
+          },
+          {
+            "name": "index_sessions_date_heure_debut",
+            "unique": false,
+            "columnNames": [
+              "date_heure_debut"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_sessions_date_heure_debut` ON `${TABLE_NAME}` (`date_heure_debut`)"
+          }
+        ],
+        "foreignKeys": []
+      },
+      {
+        "tableName": "lignes_collecte",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id_ligne` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `id_session` INTEGER NOT NULL, `code_produit` TEXT NOT NULL, `code_barre_scanne` TEXT, `nom_produit_snap` TEXT NOT NULL, `quantite` REAL NOT NULL, `date_saisie` TEXT NOT NULL, FOREIGN KEY(`id_session`) REFERENCES `sessions`(`id_session`) ON UPDATE NO ACTION ON DELETE CASCADE , FOREIGN KEY(`code_produit`) REFERENCES `articles`(`code_produit`) ON UPDATE NO ACTION ON DELETE RESTRICT )",
+        "fields": [
+          {
+            "fieldPath": "idLigne",
+            "columnName": "id_ligne",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "idSession",
+            "columnName": "id_session",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "codeProduit",
+            "columnName": "code_produit",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "codeBarreScanne",
+            "columnName": "code_barre_scanne",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "nomProduitSnap",
+            "columnName": "nom_produit_snap",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "quantite",
+            "columnName": "quantite",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "dateSaisie",
+            "columnName": "date_saisie",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id_ligne"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_lignes_collecte_id_session",
+            "unique": false,
+            "columnNames": [
+              "id_session"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_lignes_collecte_id_session` ON `${TABLE_NAME}` (`id_session`)"
+          },
+          {
+            "name": "index_lignes_collecte_code_produit",
+            "unique": false,
+            "columnNames": [
+              "code_produit"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_lignes_collecte_code_produit` ON `${TABLE_NAME}` (`code_produit`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "sessions",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "id_session"
+            ],
+            "referencedColumns": [
+              "id_session"
+            ]
+          },
+          {
+            "table": "articles",
+            "onDelete": "RESTRICT",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "code_produit"
+            ],
+            "referencedColumns": [
+              "code_produit"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "exports",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id_export` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `id_session` INTEGER NOT NULL, `nom_fichier` TEXT NOT NULL, `date_export` TEXT NOT NULL, `nb_lignes_exportees` INTEGER NOT NULL, `chemin_fichier` TEXT, FOREIGN KEY(`id_session`) REFERENCES `sessions`(`id_session`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "idExport",
+            "columnName": "id_export",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "idSession",
+            "columnName": "id_session",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "nomFichier",
+            "columnName": "nom_fichier",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "dateExport",
+            "columnName": "date_export",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "nbLignesExportees",
+            "columnName": "nb_lignes_exportees",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "cheminFichier",
+            "columnName": "chemin_fichier",
+            "affinity": "TEXT",
+            "notNull": false
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id_export"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_exports_id_session",
+            "unique": false,
+            "columnNames": [
+              "id_session"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_exports_id_session` ON `${TABLE_NAME}` (`id_session`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "sessions",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "id_session"
+            ],
+            "referencedColumns": [
+              "id_session"
+            ]
+          }
+        ]
+      }
+    ],
+    "views": [],
+    "setupQueries": [
+      "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'c06940fbc440160ec00a959766bf7ca6')"
+    ]
+  }
+}

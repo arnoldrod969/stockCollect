@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--
+      Marge horizontale des écrans de formulaire. Surchargée en `values-sw600dp` et
+      `values-sw720dp` : sur les tablettes de l'entrepôt, une marge de 16 dp laissait les lignes
+      de texte courir sur toute la largeur de la dalle (bien au-delà de 75 caractères) et les
+      champs s'étirer sur 700 dp. Le qualificatif est `sw` (plus petite largeur) et non `w`, donc
+      la valeur ne change pas à la rotation — ce qui compte, MainActivity déclarant
+      `configChanges="orientation|screenSize"` et ne rechargeant donc pas ses ressources.
+    -->
+    <dimen name="screen_padding_horizontal">16dp</dimen>
+
+    <!-- Cible tactile minimale Material (48 dp), et hauteur des actions pleine largeur. -->
+    <dimen name="touch_target_min">48dp</dimen>
+    <dimen name="button_height">52dp</dimen>
+</resources>

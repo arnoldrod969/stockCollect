@@ -7,6 +7,7 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.TextView
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.view.isVisible
@@ -16,6 +17,8 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.snackbar.Snackbar
 import com.jdcosmetics.stockcollect.R
 import com.jdcosmetics.stockcollect.databinding.FragmentImportCatalogueBinding
+import com.jdcosmetics.stockcollect.domain.service.AnalyseCatalogue
+import com.jdcosmetics.stockcollect.domain.service.ResolutionConflit
 import com.jdcosmetics.stockcollect.util.DateUtils
 import dagger.hilt.android.AndroidEntryPoint
 
@@ -65,11 +68,35 @@ class ImportCatalogueFragment : Fragment() {
         binding.btnChoisirCorrespondance.setOnClickListener {
             ouvrirSelecteurFichier(pickCorrespondanceLauncher)
         }
+        binding.btnCatalogueNirgescom.setOnClickListener { confirmerEtImporterCatalogueNirgescom() }
+        // Pas de confirmation, comme pour le fichier : l'avertissement de la carte suffit, et une
+        // réponse vide de Nirgescom ne remplace rien.
+        binding.btnCorrespondanceNirgescom.setOnClickListener {
+            viewModel.importerCodesBarresNirgescom()
+        }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        // La connexion a pu être réglée dans Paramètres depuis le dernier passage.
+        viewModel.rafraichirConfiguration()
     }
 
     private fun observeViewModel() {
         viewModel.nbArticles.observe(viewLifecycleOwner) { nb ->
             binding.tvNbArticles.text = nb.toString()
+            // L'import de correspondance refuse de tourner tant qu'il n'y a pas d'articles : le
+            // laisser cliquable faisait choisir un fichier pour se voir refuser après coup.
+            majBoutons()
+            binding.tvCorrespondanceAvertissement.text =
+                if (nb > 0) "⚠ L'import remplace toutes les correspondances existantes."
+                else "Importez d'abord le catalogue : les codes-barres se rattachent à des " +
+                    "articles, il en faut en base."
+        }
+        viewModel.nirgescomConfigure.observe(viewLifecycleOwner) { configure ->
+            binding.btnCatalogueNirgescom.isVisible = configure
+            binding.btnCorrespondanceNirgescom.isVisible = configure
+            binding.tvNirgescomNonConfigure.isVisible = !configure
         }
         viewModel.nbCorrespondances.observe(viewLifecycleOwner) { nb ->
             binding.tvNbCorrespondances.text = nb.toString()
@@ -83,23 +110,42 @@ class ImportCatalogueFragment : Fragment() {
             when (state) {
                 is ImportUiState.Loading -> {
                     binding.progressCatalogue.isVisible = true
-                    binding.btnChoisirCatalogue.isEnabled = false
+                    majBoutons()
+                }
+                is ImportUiState.ConflitsDetectes -> {
+                    binding.progressCatalogue.isVisible = false
+                    majBoutons()
+                    afficherDialogConflits(state.analyse)
                 }
                 is ImportUiState.Success -> {
                     binding.progressCatalogue.isVisible = false
-                    binding.btnChoisirCatalogue.isEnabled = true
-                    afficherDialogResultat("Import catalogue", state.result.toResume(), state.result.erreurs)
+                    majBoutons()
+                    afficherDialogResultat(
+                        if (state.depuisNirgescom) "Catalogue mis à jour depuis Nirgescom"
+                        else "Catalogue importé",
+                        state.result.toResume(), state.result.erreurs
+                    )
+                    viewModel.resetCatalogueState()
+                }
+                is ImportUiState.Message -> {
+                    binding.progressCatalogue.isVisible = false
+                    majBoutons()
+                    afficherDialogResultat(state.titre, state.message, state.erreurs)
                     viewModel.resetCatalogueState()
                 }
                 is ImportUiState.Error -> {
                     binding.progressCatalogue.isVisible = false
-                    binding.btnChoisirCatalogue.isEnabled = true
-                    afficherErreur(state.message)
+                    majBoutons()
+                    // Dialogue modal, pas Snackbar : un import rejeté oblige à corriger le fichier
+                    // source, ce qui suppose de lire quelles lignes ont échoué. Un message qui
+                    // s'efface tout seul au bout de trois secondes, sans le détail, laissait le
+                    // magasinier devant un catalogue inchangé sans savoir pourquoi.
+                    afficherDialogResultat("Catalogue non importé", state.message, state.erreurs)
                     viewModel.resetCatalogueState()
                 }
                 else -> {
                     binding.progressCatalogue.isVisible = false
-                    binding.btnChoisirCatalogue.isEnabled = true
+                    majBoutons()
                 }
             }
         }
@@ -108,39 +154,92 @@ class ImportCatalogueFragment : Fragment() {
             when (state) {
                 is ImportUiState.Loading -> {
                     binding.progressCorrespondance.isVisible = true
-                    binding.btnChoisirCorrespondance.isEnabled = false
+                    majBoutons()
                 }
                 is ImportUiState.Success -> {
                     binding.progressCorrespondance.isVisible = false
-                    binding.btnChoisirCorrespondance.isEnabled = true
-                    afficherDialogResultat("Import correspondance CB", state.result.toResume(), state.result.erreurs)
+                    majBoutons()
+                    afficherDialogResultat(
+                        if (state.depuisNirgescom) "Codes-barres mis à jour depuis Nirgescom"
+                        else "Codes-barres importés",
+                        state.result.toResume(), state.result.erreurs
+                    )
+                    viewModel.resetCorrespondanceState()
+                }
+                is ImportUiState.Message -> {
+                    binding.progressCorrespondance.isVisible = false
+                    majBoutons()
+                    afficherDialogResultat(state.titre, state.message, state.erreurs)
                     viewModel.resetCorrespondanceState()
                 }
                 is ImportUiState.Error -> {
                     binding.progressCorrespondance.isVisible = false
-                    binding.btnChoisirCorrespondance.isEnabled = true
+                    majBoutons()
                     afficherErreur(state.message)
                     viewModel.resetCorrespondanceState()
                 }
                 else -> {
                     binding.progressCorrespondance.isVisible = false
-                    binding.btnChoisirCorrespondance.isEnabled = true
+                    majBoutons()
                 }
             }
         }
     }
+
+    /**
+     * Seul endroit qui active les boutons d'import. Tous se désactivent dès qu'un import, quel
+     * qu'il soit, est en cours (voir ImportCatalogueViewModel.importEnCours) ; le compteur
+     * d'articles, qui émet à la fin d'un import du catalogue, ne peut donc plus réactiver les
+     * codes-barres pendant que leur propre import tourne.
+     */
+    private fun majBoutons() {
+        val libre = !viewModel.importEnCours
+        binding.btnChoisirCatalogue.isEnabled = libre
+        binding.btnCatalogueNirgescom.isEnabled = libre
+        binding.btnChoisirCorrespondance.isEnabled = libre && catalogueCharge()
+        binding.btnCorrespondanceNirgescom.isEnabled = libre && catalogueCharge()
+    }
+
+    /** L'étape 2 n'a de sens qu'avec des articles en base : le parseur refuse de tourner sans. */
+    private fun catalogueCharge(): Boolean = (viewModel.nbArticles.value ?: 0) > 0
 
     private fun confirmerEtImporterCatalogue(uri: Uri) {
         val nbActuels = viewModel.nbArticles.value ?: 0
         if (nbActuels > 0) {
             MaterialAlertDialogBuilder(requireContext())
                 .setTitle("Remplacer le catalogue ?")
-                .setMessage("Le catalogue actuel ($nbActuels articles) sera remplac\u00e9. Cette action est irr\u00e9versible.")
-                .setPositiveButton("Remplacer") { _, _ -> viewModel.importerCatalogue(uri) }
+                .setMessage(
+                    "Les $nbActuels articles actuels seront remplacés par ceux du fichier. " +
+                        "Les sessions déjà collectées, elles, ne changent pas."
+                )
+                .setPositiveButton("Remplacer le catalogue") { _, _ -> viewModel.importerCatalogue(uri) }
                 .setNegativeButton("Annuler", null)
                 .show()
         } else {
             viewModel.importerCatalogue(uri)
+        }
+    }
+
+    /**
+     * Même confirmation que pour un fichier quand un catalogue est déjà là. Le dépôt est nommé :
+     * Nirgescom renvoie l'assortiment du dépôt de la clé, pas un catalogue universel.
+     */
+    private fun confirmerEtImporterCatalogueNirgescom() {
+        val nbActuels = viewModel.nbArticles.value ?: 0
+        if (nbActuels > 0) {
+            MaterialAlertDialogBuilder(requireContext())
+                .setTitle("Mettre à jour le catalogue ?")
+                .setMessage(
+                    "Les articles du dépôt « ${viewModel.magasinConfigure} » vont être demandés " +
+                        "à Nirgescom et remplaceront ceux de la tablette. Les quantités de " +
+                        "référence actuelles sont conservées, et les sessions déjà collectées " +
+                        "ne changent pas."
+                )
+                .setPositiveButton("Mettre à jour") { _, _ -> viewModel.importerCatalogueNirgescom() }
+                .setNegativeButton("Annuler", null)
+                .show()
+        } else {
+            viewModel.importerCatalogueNirgescom()
         }
     }
 
@@ -152,16 +251,88 @@ class ImportCatalogueFragment : Fragment() {
         launcher.launch(intent)
     }
 
+    /**
+     * Règle de gestion : un code-barre n'appartient qu'à un seul article. Quand le fichier la
+     * viole, rien n'a encore été écrit — c'est à l'utilisateur de dire quoi faire.
+     *
+     * Les décomptes par famille sont affichés parce qu'aucune option n'est bonne dans les deux cas :
+     * « ignorer » convient à une fiche dupliquée, mais ferait disparaître un produit réel quand
+     * deux articles distincts se disputent un code-barre.
+     */
+    private fun afficherDialogConflits(analyse: AnalyseCatalogue) {
+        // Seuls les vrais conflits sont détaillés, et au plus quelques-uns. AlertDialog n'accorde
+        // aux boutons que la place laissée par le contenu : avec les 9 conflits du catalogue en
+        // entier, les trois boutons s'empilaient puis passaient sous le bord de l'écran, et
+        // « Ignorer ces articles » devenait inatteignable. Le rapport complet est affiché après
+        // l'import, où il n'y a plus de décision à prendre.
+        val decisifs = analyse.detailDecisif()
+        val vue = layoutInflater.inflate(R.layout.dialog_conflits_codes_barres, null)
+        vue.findViewById<TextView>(R.id.tv_conflits).text = buildString {
+            append(analyse.resumeConflits())
+            if (decisifs.isNotEmpty()) {
+                append("\n")
+                append(decisifs.take(MAX_CONFLITS_AFFICHES).joinToString("\n\n"))
+                if (decisifs.size > MAX_CONFLITS_AFFICHES) {
+                    append("\n\n… et ${decisifs.size - MAX_CONFLITS_AFFICHES} autre(s), ")
+                    append("listé(s) dans le rapport d'import.")
+                }
+            }
+            // Information seulement, pas une question : la règle est fixée, le catalogue
+            // l'emporte sur la correspondance quel que soit le bouton choisi (TASK-11).
+            analyse.resumeCorrespondancesRetirees()?.let {
+                append("\n\n")
+                append(it)
+            }
+            append("\n\nQue faire ?")
+        }
+
+        val dialog = MaterialAlertDialogBuilder(requireContext())
+            .setTitle("Codes-barres en conflit")
+            .setView(vue)
+            .setCancelable(false)
+            .setPositiveButton("Importer sans code-barres") { _, _ ->
+                // Les articles écartés restent trouvables par recherche et comptables :
+                // ils perdent seulement la possibilité d'être scannés.
+                viewModel.resoudreConflits(ResolutionConflit.IMPORTER_SANS_CODE_BARRE)
+            }
+            .setNeutralButton("Ignorer ces articles") { _, _ ->
+                viewModel.resoudreConflits(ResolutionConflit.IGNORER_ARTICLES)
+            }
+            .setNegativeButton("Annuler l'import") { _, _ ->
+                viewModel.annulerImport()
+                Snackbar.make(
+                    binding.root,
+                    "Import annulé : le catalogue n'a pas changé.",
+                    Snackbar.LENGTH_LONG
+                ).show()
+            }
+            .create()
+
+        // La hauteur fixe du ScrollView est posée ici, pas dans le XML : inflate() sans parent ne
+        // génère aucun LayoutParams pour la racine, donc le layout_height du fichier est perdu et
+        // la vue reprend un wrap_content qui chasse les boutons de l'écran. À l'affichage, la vue
+        // est attachée et ses LayoutParams sont ceux du conteneur du dialogue.
+        dialog.setOnShowListener {
+            vue.layoutParams = vue.layoutParams.apply {
+                height = (HAUTEUR_DETAIL_DP * resources.displayMetrics.density).toInt()
+            }
+            vue.requestLayout()
+        }
+        dialog.show()
+    }
+
     private fun afficherDialogResultat(titre: String, message: String, erreurs: List<String>) {
         val detail = if (erreurs.isNotEmpty()) {
-            "$message\n\nD\u00e9tails erreurs :\n${erreurs.take(5).joinToString("\n")}" +
+            // \u00ab D\u00e9tails \u00bb et non \u00ab D\u00e9tails erreurs \u00bb : la liste m\u00eale les lignes rejet\u00e9es et les
+            // lignes recoll\u00e9es, qui sont au contraire des r\u00e9cup\u00e9rations r\u00e9ussies.
+            "$message\n\nD\u00e9tails :\n${erreurs.take(5).joinToString("\n")}" +
             if (erreurs.size > 5) "\n... et ${erreurs.size - 5} autres" else ""
         } else message
 
         MaterialAlertDialogBuilder(requireContext())
             .setTitle(titre)
             .setMessage(detail)
-            .setPositiveButton("OK", null)
+            .setPositiveButton("Fermer", null)
             .show()
     }
 
@@ -172,5 +343,13 @@ class ImportCatalogueFragment : Fragment() {
     override fun onDestroyView() {
         super.onDestroyView()
         _binding = null
+    }
+
+    companion object {
+        /** Laisse la place au titre et aux trois boutons empilés sur la plus petite tablette visée. */
+        private const val HAUTEUR_DETAIL_DP = 300
+
+        /** Au-delà, le dialogue de décision déborde ; le reste part dans le rapport d'import. */
+        private const val MAX_CONFLITS_AFFICHES = 4
     }
 }

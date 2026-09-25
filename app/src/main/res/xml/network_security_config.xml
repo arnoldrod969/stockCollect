@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Depuis Android 9, le trafic HTTP en clair est bloqué par défaut. Le serveur Nirgescom est exposé
+  en clair sur le LAN du magasin (SPEC §3, « pas de HTTPS pour l'instant ») : sans cette
+  configuration, le test de connexion échouerait sur une erreur réseau incompréhensible pour le
+  magasinier, alors que le serveur répond très bien.
+
+  Le clair est autorisé globalement, et ce n'est pas un oubli : l'adresse du serveur est saisie à
+  l'exécution dans l'écran Paramètres et vaut une IP privée quelconque (192.168.x.x selon le
+  magasin). Or `cleartextTrafficPermitted` s'applique à des domaines littéraux — la configuration
+  réseau d'Android ne sait pas exprimer une plage d'adresses, ni en CIDR ni autrement. Restreindre
+  à une liste d'hôtes reviendrait donc à recompiler l'app à chaque déploiement.
+
+  Ce que cela coûte : une requête vers un hôte public tapé par erreur partirait aussi en clair.
+  Le jour où l'API passe en TLS, ce fichier disparaît et l'attribut du manifeste avec lui.
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true" />
+</network-security-config>

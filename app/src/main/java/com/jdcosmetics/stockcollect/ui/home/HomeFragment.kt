@@ -48,6 +48,9 @@ class HomeFragment : Fragment() {
         binding.rowImport.setOnClickListener {
             findNavController().navigate(R.id.action_home_to_import)
         }
+        binding.rowParametres.setOnClickListener {
+            findNavController().navigate(R.id.action_home_to_parametres)
+        }
         binding.cardReprendreBrouillon.setOnClickListener {
             val idSession = viewModel.lastBrouillon.value?.idSession ?: return@setOnClickListener
             val action = HomeFragmentDirections.actionHomeToSaisie(idSession)
@@ -68,8 +71,15 @@ class HomeFragment : Fragment() {
             binding.tvNbArticles.text = nb.toString()
         }
         viewModel.dernierImport.observe(viewLifecycleOwner) { date ->
-            binding.tvDernierImport.text = if (date != null) "MAJ : ${DateUtils.toDisplayDate(date)}"
-            else "Aucun catalogue importé"
+            binding.tvDernierImport.text =
+                if (date != null) "Mis à jour le ${DateUtils.toDisplayDate(date)}"
+                // La ligne est cliquable et mène à l'import : le dire vaut mieux que constater
+                // le vide.
+                else "Aucun catalogue — à importer"
+        }
+        viewModel.magasinConfigure.observe(viewLifecycleOwner) { magasin ->
+            binding.tvEtatParametres.text =
+                if (magasin != null) "Dépôt : $magasin" else "Dépôt à régler"
         }
         viewModel.lastBrouillon.observe(viewLifecycleOwner) { brouillon ->
             if (brouillon != null) {
@@ -80,6 +90,14 @@ class HomeFragment : Fragment() {
                 binding.cardReprendreBrouillon.isVisible = false
             }
         }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        // Tout se modifie dans un autre écran — réglages, catalogue, brouillon en cours. Le
+        // ViewModel survivant à l'aller-retour, sans cette relecture l'accueil resterait figé sur
+        // l'état d'avant.
+        viewModel.rafraichir()
     }
 
     override fun onDestroyView() {
