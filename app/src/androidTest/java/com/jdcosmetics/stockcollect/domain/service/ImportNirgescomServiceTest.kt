@@ -146,6 +146,22 @@ class ImportNirgescomServiceTest {
         assertTrue(resultat.success)
         assertEquals(1, resultat.nbIgnores)
         assertEquals(null, db.articleDao().findByCodeProduit("P11"))
+        // Version partielle : pas d'ETag, sans quoi un 304 interdirait de revenir sur le choix.
+        assertEquals("", parametres.etagCatalogue)
+    }
+
+    @Test
+    fun catalogue_conflitImporteSansCodeBarre_etagEnregistre() = runBlocking {
+        val distant = catalogueDistant() + article("P11", "CB01", "AUTRE PRODUIT")
+        val prete = analysePrete(ResultatReferentiel.Ok(distant, "\"cat-2\""))
+
+        val resultat = service.appliquerCatalogue(
+            prete.analyse, ResolutionConflit.IMPORTER_SANS_CODE_BARRE, prete.etag
+        )
+        assertTrue(resultat.success)
+        assertEquals(null, db.articleDao().findByCodeProduit("P11")!!.codeBarrePrincipal)
+        // Tous les articles reçus sont en base : la tablette détient bien cette version.
+        assertEquals("\"cat-2\"", parametres.etagCatalogue)
     }
 
     @Test

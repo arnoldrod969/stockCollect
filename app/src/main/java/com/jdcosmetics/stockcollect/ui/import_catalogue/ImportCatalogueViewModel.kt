@@ -110,7 +110,19 @@ class ImportCatalogueViewModel @Inject constructor(
 
     private class OrigineNirgescom(val etag: String?)
 
+    /**
+     * Un seul import à la fois sur tout l'écran, catalogue et codes-barres confondus. Les deux
+     * écrivent des tables liées : un import de codes-barres qui lit la liste des articles pendant
+     * qu'un catalogue s'écrit écarterait des codes valides puis enregistrerait son ETag — et un
+     * 304 masquerait ensuite le manque. Vérifié ici, pas seulement par les boutons : un double tap
+     * ou deux dialogues de confirmation passent avant que l'écran ait désactivé quoi que ce soit.
+     */
+    val importEnCours: Boolean
+        get() = _catalogueState.value is ImportUiState.Loading ||
+            _correspondanceState.value is ImportUiState.Loading
+
     fun importerCatalogue(uri: Uri) {
+        if (importEnCours) return
         _catalogueState.value = ImportUiState.Loading
         viewModelScope.launch {
             when (val analyse = importService.analyserCatalogue(uri)) {
@@ -128,6 +140,7 @@ class ImportCatalogueViewModel @Inject constructor(
      * rien n'est écrit avant que les conflits éventuels soient tranchés.
      */
     fun importerCatalogueNirgescom() {
+        if (importEnCours) return
         _catalogueState.value = ImportUiState.Loading
         viewModelScope.launch {
             when (val analyse = importNirgescom.analyserCatalogue()) {
@@ -205,6 +218,7 @@ class ImportCatalogueViewModel @Inject constructor(
     }
 
     fun importerCorrespondance(uri: Uri) {
+        if (importEnCours) return
         _correspondanceState.value = ImportUiState.Loading
         viewModelScope.launch {
             val result = importService.importCorrespondance(uri)
@@ -227,6 +241,7 @@ class ImportCatalogueViewModel @Inject constructor(
      * (TASK-16 #4) : la correspondance en place est gardée et l'utilisateur le sait.
      */
     fun importerCodesBarresNirgescom() {
+        if (importEnCours) return
         _correspondanceState.value = ImportUiState.Loading
         viewModelScope.launch {
             _correspondanceState.value = when (val r = importNirgescom.importerCodesBarres()) {

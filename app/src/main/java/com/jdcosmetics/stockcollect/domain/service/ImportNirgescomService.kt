@@ -102,7 +102,12 @@ class ImportNirgescomService @Inject constructor(
             analyse, resolution, conserverQuantitesRef = true
         )
         if (resultat.success) {
-            parametres.etagCatalogue = etag.orEmpty()
+            // Articles en conflit écartés : la tablette ne détient pas cette version entière. Un
+            // 304 au prochain appel interdirait de revenir sur l'arbitrage (les importer sans
+            // code-barres) : l'ETag est effacé, le prochain appel relit tout.
+            val versionPartielle = resolution == ResolutionConflit.IGNORER_ARTICLES &&
+                analyse.aDesConflits
+            parametres.etagCatalogue = if (versionPartielle) "" else etag.orEmpty()
             parametres.etagCodesBarres = ""
         }
         return resultat

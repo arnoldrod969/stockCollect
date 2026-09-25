@@ -87,8 +87,7 @@ class ImportCatalogueFragment : Fragment() {
             binding.tvNbArticles.text = nb.toString()
             // L'import de correspondance refuse de tourner tant qu'il n'y a pas d'articles : le
             // laisser cliquable faisait choisir un fichier pour se voir refuser après coup.
-            binding.btnChoisirCorrespondance.isEnabled = nb > 0
-            binding.btnCorrespondanceNirgescom.isEnabled = nb > 0
+            majBoutons()
             binding.tvCorrespondanceAvertissement.text =
                 if (nb > 0) "⚠ L'import remplace toutes les correspondances existantes."
                 else "Importez d'abord le catalogue : les codes-barres se rattachent à des " +
@@ -111,16 +110,16 @@ class ImportCatalogueFragment : Fragment() {
             when (state) {
                 is ImportUiState.Loading -> {
                     binding.progressCatalogue.isVisible = true
-                    activerBoutonsCatalogue(false)
+                    majBoutons()
                 }
                 is ImportUiState.ConflitsDetectes -> {
                     binding.progressCatalogue.isVisible = false
-                    activerBoutonsCatalogue(true)
+                    majBoutons()
                     afficherDialogConflits(state.analyse)
                 }
                 is ImportUiState.Success -> {
                     binding.progressCatalogue.isVisible = false
-                    activerBoutonsCatalogue(true)
+                    majBoutons()
                     afficherDialogResultat(
                         if (state.depuisNirgescom) "Catalogue mis à jour depuis Nirgescom"
                         else "Catalogue importé",
@@ -130,13 +129,13 @@ class ImportCatalogueFragment : Fragment() {
                 }
                 is ImportUiState.Message -> {
                     binding.progressCatalogue.isVisible = false
-                    activerBoutonsCatalogue(true)
+                    majBoutons()
                     afficherDialogResultat(state.titre, state.message, state.erreurs)
                     viewModel.resetCatalogueState()
                 }
                 is ImportUiState.Error -> {
                     binding.progressCatalogue.isVisible = false
-                    activerBoutonsCatalogue(true)
+                    majBoutons()
                     // Dialogue modal, pas Snackbar : un import rejeté oblige à corriger le fichier
                     // source, ce qui suppose de lire quelles lignes ont échoué. Un message qui
                     // s'efface tout seul au bout de trois secondes, sans le détail, laissait le
@@ -146,7 +145,7 @@ class ImportCatalogueFragment : Fragment() {
                 }
                 else -> {
                     binding.progressCatalogue.isVisible = false
-                    activerBoutonsCatalogue(true)
+                    majBoutons()
                 }
             }
         }
@@ -155,11 +154,11 @@ class ImportCatalogueFragment : Fragment() {
             when (state) {
                 is ImportUiState.Loading -> {
                     binding.progressCorrespondance.isVisible = true
-                    activerBoutonsCorrespondance(false)
+                    majBoutons()
                 }
                 is ImportUiState.Success -> {
                     binding.progressCorrespondance.isVisible = false
-                    activerBoutonsCorrespondance(catalogueCharge())
+                    majBoutons()
                     afficherDialogResultat(
                         if (state.depuisNirgescom) "Codes-barres mis à jour depuis Nirgescom"
                         else "Codes-barres importés",
@@ -169,33 +168,36 @@ class ImportCatalogueFragment : Fragment() {
                 }
                 is ImportUiState.Message -> {
                     binding.progressCorrespondance.isVisible = false
-                    activerBoutonsCorrespondance(catalogueCharge())
+                    majBoutons()
                     afficherDialogResultat(state.titre, state.message, state.erreurs)
                     viewModel.resetCorrespondanceState()
                 }
                 is ImportUiState.Error -> {
                     binding.progressCorrespondance.isVisible = false
-                    activerBoutonsCorrespondance(catalogueCharge())
+                    majBoutons()
                     afficherErreur(state.message)
                     viewModel.resetCorrespondanceState()
                 }
                 else -> {
                     binding.progressCorrespondance.isVisible = false
-                    activerBoutonsCorrespondance(catalogueCharge())
+                    majBoutons()
                 }
             }
         }
     }
 
-    /** Fichier et Nirgescom écrivent la même table : pas deux imports du catalogue à la fois. */
-    private fun activerBoutonsCatalogue(actifs: Boolean) {
-        binding.btnChoisirCatalogue.isEnabled = actifs
-        binding.btnCatalogueNirgescom.isEnabled = actifs
-    }
-
-    private fun activerBoutonsCorrespondance(actifs: Boolean) {
-        binding.btnChoisirCorrespondance.isEnabled = actifs
-        binding.btnCorrespondanceNirgescom.isEnabled = actifs
+    /**
+     * Seul endroit qui active les boutons d'import. Tous se désactivent dès qu'un import, quel
+     * qu'il soit, est en cours (voir ImportCatalogueViewModel.importEnCours) ; le compteur
+     * d'articles, qui émet à la fin d'un import du catalogue, ne peut donc plus réactiver les
+     * codes-barres pendant que leur propre import tourne.
+     */
+    private fun majBoutons() {
+        val libre = !viewModel.importEnCours
+        binding.btnChoisirCatalogue.isEnabled = libre
+        binding.btnCatalogueNirgescom.isEnabled = libre
+        binding.btnChoisirCorrespondance.isEnabled = libre && catalogueCharge()
+        binding.btnCorrespondanceNirgescom.isEnabled = libre && catalogueCharge()
     }
 
     /** L'étape 2 n'a de sens qu'avec des articles en base : le parseur refuse de tourner sans. */

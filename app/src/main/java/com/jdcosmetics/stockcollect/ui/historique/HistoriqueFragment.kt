@@ -9,6 +9,7 @@ import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.LinearLayoutManager
+import com.jdcosmetics.stockcollect.R
 import com.jdcosmetics.stockcollect.data.db.entity.StatutSession
 import com.jdcosmetics.stockcollect.data.db.entity.TypeOperation
 import com.jdcosmetics.stockcollect.databinding.FragmentHistoriqueBinding
@@ -46,9 +47,14 @@ class HistoriqueFragment : Fragment() {
                 }
             },
             onExporterClick = { session ->
-                findNavController().navigate(
-                    HistoriqueFragmentDirections.actionHistoriqueToExport(session.idSession)
-                )
+                // Double tap : le premier navigate a déjà quitté l'Historique, le second lèverait
+                // « action unknown to the current destination ».
+                val nav = findNavController()
+                if (nav.currentDestination?.id == R.id.historiqueFragment) {
+                    nav.navigate(
+                        HistoriqueFragmentDirections.actionHistoriqueToExport(session.idSession)
+                    )
+                }
             }
         )
         binding.rvSessions.apply {

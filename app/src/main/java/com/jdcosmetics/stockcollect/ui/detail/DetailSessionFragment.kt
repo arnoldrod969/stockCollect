@@ -51,7 +51,11 @@ class DetailSessionFragment : Fragment() {
         // L'identifiant vient des arguments, pas de la session affichée : c'est celle-là que
         // l'écran montre, et il est connu avant même que la lecture en base soit revenue.
         binding.btnExporterCsv.setOnClickListener {
-            findNavController().navigate(
+            // Double tap : le premier navigate a déjà quitté le Détail, le second lèverait
+            // « action unknown to the current destination ».
+            val nav = findNavController()
+            if (nav.currentDestination?.id != R.id.detailSessionFragment) return@setOnClickListener
+            nav.navigate(
                 DetailSessionFragmentDirections.actionDetailToExport(args.idSession)
             )
         }
