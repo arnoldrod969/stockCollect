@@ -28,7 +28,7 @@ interface SessionDao {
     @Query("""
         SELECT * FROM sessions
         WHERE statut = 'BROUILLON' AND type_operation = :typeOperation
-        ORDER BY date_heure_debut DESC LIMIT 1
+        ORDER BY date_heure_debut DESC, id_session DESC LIMIT 1
     """)
     suspend fun getLastBrouillonDuType(typeOperation: String): SessionEntity?
 
@@ -89,11 +89,16 @@ interface SessionDao {
     """)
     suspend fun marquerSynchronisee(id: Long, date: String): Int
 
+    /**
+     * Gardé : un renvoi raté (hors WiFi, clé changée) d'une session déjà reçue ne la fait pas
+     * repasser en échec — ses lignes sont chez Nirgescom, un 201 l'a établi. Le message reste
+     * montré à l'utilisateur, seul l'état n'est pas dégradé.
+     */
     @Query("""
         UPDATE sessions
         SET statut_sync = 'ECHEC_SYNC', date_derniere_tentative = :date,
             nb_tentatives = nb_tentatives + 1, message_erreur_sync = :message
-        WHERE id_session = :id
+        WHERE id_session = :id AND statut_sync != 'SYNCHRONISEE'
     """)
     suspend fun marquerEchecSync(id: Long, date: String, message: String): Int
 }

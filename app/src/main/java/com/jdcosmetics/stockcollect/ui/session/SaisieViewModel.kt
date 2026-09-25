@@ -120,11 +120,12 @@ class SaisieViewModel @Inject constructor(
         }
     }
 
+    /** Même ordre que [chargerSessionExistante], et même garde contre un changement de session. */
     private suspend fun reprendre(idSession: Long) {
         _idSessionCourante = idSession
-        chargerSession(idSession)
         observerLignes(idSession)
-        _uiState.value = SaisieUiState.SessionCreee(idSession)
+        chargerSession(idSession)
+        if (idSession == _idSessionCourante) _uiState.value = SaisieUiState.SessionCreee(idSession)
     }
 
     /**

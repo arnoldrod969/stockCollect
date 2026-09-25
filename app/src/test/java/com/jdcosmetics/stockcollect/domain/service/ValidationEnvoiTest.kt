@@ -58,6 +58,13 @@ class ValidationEnvoiTest {
     }
 
     @Test
+    fun `NEL (U+0085) en fin de code refuse, comme le strip() de Python`() {
+        // Kotlin trim() ne le retire pas ; le repli ISO-8859-1 le produit depuis l'octet cp1252 0x85.
+        assertEquals(1, verifier(ligne(codeProduit = "1001010033\u0085")).size)
+        assertEquals(1, verifier(ligne(codeBarre = "9501101370104\u0085")).size)
+    }
+
+    @Test
     fun `code_barre blanc vaut null pour l'API et passe`() {
         assertEquals(emptyList<String>(), verifier(ligne(codeBarre = "   ")))
     }

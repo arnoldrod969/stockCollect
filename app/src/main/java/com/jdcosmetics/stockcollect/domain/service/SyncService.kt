@@ -5,6 +5,7 @@ import com.jdcosmetics.stockcollect.data.db.dao.SessionDao
 import com.jdcosmetics.stockcollect.data.db.entity.LigneCollecteEntity
 import com.jdcosmetics.stockcollect.data.db.entity.SessionEntity
 import com.jdcosmetics.stockcollect.data.db.entity.StatutSession
+import com.jdcosmetics.stockcollect.data.db.entity.TypeOperation
 import com.jdcosmetics.stockcollect.data.prefs.ParametresSync
 import com.jdcosmetics.stockcollect.data.remote.NirgescomClient
 import com.jdcosmetics.stockcollect.data.remote.ResultatEnvoi
@@ -74,10 +75,26 @@ class SyncService @Inject constructor(
             )
         }
 
+        // Les sessions ENTREE / SORTIE d'avant la V2 restent lisibles et exportables, mais le
+        // contrat n'accepte que INVENTAIRE (et COMMANDE, étape 2) : l'envoi finirait en 422.
+        if (session.typeOperation != TypeOperation.INVENTAIRE) {
+            return ResultatSync.Impossible(
+                "Nirgescom n'accepte que les inventaires : une session " +
+                    "« ${TypeOperation.label(session.typeOperation)} » ne peut pas lui être " +
+                    "envoyée. Exportez-la en CSV."
+            )
+        }
+
         val lignes = ligneDao.getLignesBySessionSync(idSession)
         if (lignes.isEmpty()) {
             return ResultatSync.Impossible(
                 "Cette session ne contient aucun article : il n'y a rien à envoyer."
+            )
+        }
+        if (lignes.size > ValidationEnvoi.LIGNES_MAX) {
+            return ResultatSync.Impossible(
+                "Cette session compte ${lignes.size} articles, et Nirgescom en accepte " +
+                    "${ValidationEnvoi.LIGNES_MAX} au plus par envoi. Exportez-la en CSV."
             )
         }
 
@@ -225,14 +242,17 @@ class SyncService @Inject constructor(
  * retouchée changerait `hash_ligne`, et un renvoi ultérieur de la même session ne retrouverait
  * plus ses lignes. Retirer un espace ou arrondir une quantité ici aurait le même effet.
  *
- * Les contrôles déjà garantis par construction (UUID, date, type d'opération, `null` en
- * inventaire) ne sont pas rejoués.
+ * Les contrôles déjà garantis par construction (UUID, date, `null` en inventaire) ne sont pas
+ * rejoués. Le type d'opération et le nombre de lignes sont vérifiés dans `synchroniser`.
  */
 object ValidationEnvoi {
 
     /** Plafond de `quantite` : colonne `decimal(10,4)`, et 3 décimales au plus. */
     val QUANTITE_MAX = BigDecimal("999999.999")
     const val DECIMALES_MAX = 3
+
+    /** `MAX_LIGNES` de validation/document.py. */
+    const val LIGNES_MAX = 5000
 
     // Longueurs maximales de validation/document.py.
     const val LONGUEUR_CODE = 50
@@ -312,10 +332,17 @@ object ValidationEnvoi {
                 "contient un emoji ou un caractère que la base Nirgescom ne sait pas stocker"
             valeur.any { it.code < 0x20 || it.code == 0x7F } ->
                 "contient un caractère de contrôle invisible (tabulation, retour à la ligne…)"
-            code && valeur != valeur.trim() -> "commence ou finit par un espace"
+            code && valeur != valeur.trim(::estEspacePython) -> "commence ou finit par un espace"
             else -> null
         }
     }
+
+    /**
+     * Ce que `str.strip()` retire côté API. `Char.isWhitespace()` en couvre tout sauf U+0085
+     * (NEL), que Python compte comme espace — et que le repli ISO-8859-1 du CsvParser produit à
+     * partir de l'octet cp1252 0x85 (« … »).
+     */
+    private fun estEspacePython(c: Char) = c.isWhitespace() || c == '\u0085'
 
     /**
      * La quantité est jugée **telle qu'elle partira** dans le JSON : `org.json` écrit un nombre

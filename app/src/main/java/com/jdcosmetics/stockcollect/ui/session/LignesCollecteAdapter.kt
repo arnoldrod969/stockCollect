@@ -3,6 +3,7 @@ package com.jdcosmetics.stockcollect.ui.session
 import android.view.LayoutInflater
 import android.view.ViewGroup
 import android.view.inputmethod.EditorInfo
+import androidx.core.widget.doAfterTextChanged
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
@@ -13,16 +14,17 @@ import com.jdcosmetics.stockcollect.util.FormatUtils
 /**
  * La quantité à écrire pour le texte du champ, ou `null` s'il n'y a rien à écrire.
  *
- * Le champ affiche la quantité arrondie à une décimale : comparer le nombre relu au `Double` en
- * base réécrivait 1.25 en 1.3 au simple passage du focus, sans que rien n'ait été tapé. On compare
- * donc d'abord au texte affiché. Revers assumé : taper exactement ce texte arrondi n'écrit rien.
+ * Le champ affiche la quantité arrondie à une décimale : relire ce texte sans que l'utilisateur
+ * l'ait touché réécrivait 1.25 en 1.3 au simple passage du focus. D'où [modifiee] : seul un champ
+ * réellement édité depuis le bind est écrit. Comparer au texte affiché ne suffisait pas — retaper
+ * exactement « 1.3 » pour corriger un 1.2999999999999998 (2.3 puis « − ») n'écrivait alors rien,
+ * et la valeur restait non envoyable après une clôture irréversible.
  *
  * Fonction pure, hors du ViewHolder, pour être testée sans Android (LignesCollecteAdapterTest).
  */
-internal fun quantiteAEcrire(saisie: String?, quantiteEnBase: Double): Double? {
-    val texte = saisie?.trim().orEmpty()
-    if (texte == FormatUtils.formatQuantite(quantiteEnBase)) return null
-    val q = texte.toDoubleOrNull() ?: return null
+internal fun quantiteAEcrire(saisie: String?, quantiteEnBase: Double, modifiee: Boolean): Double? {
+    if (!modifiee) return null
+    val q = saisie?.trim().orEmpty().toDoubleOrNull() ?: return null
     return q.takeIf { it >= 0 && it != quantiteEnBase }
 }
 
@@ -34,6 +36,14 @@ class LignesCollecteAdapter(
     inner class ViewHolder(private val binding: ItemLigneCollecteBinding) :
         RecyclerView.ViewHolder(binding.root) {
 
+        /** Le champ a été édité depuis le dernier bind ou la dernière écriture. */
+        private var saisieModifiee = false
+
+        init {
+            // Branché une seule fois : dans bind(), les watchers s'empileraient à chaque recyclage.
+            binding.etQuantite.doAfterTextChanged { saisieModifiee = true }
+        }
+
         fun bind(ligne: LigneCollecteEntity) {
             binding.tvNomProduit.text = ligne.nomProduitSnap
             binding.tvCodeProduit.text = ligne.codeProduit
@@ -43,6 +53,7 @@ class LignesCollecteAdapter(
             // nouvelle quantité et l'écrire sur l'ancien article.
             binding.etQuantite.onFocusChangeListener = null
             binding.etQuantite.setText(FormatUtils.formatQuantite(ligne.quantite))
+            saisieModifiee = false   // après setText, qui vient de déclencher le watcher
 
             binding.etQuantite.setOnFocusChangeListener { _, hasFocus ->
                 if (!hasFocus) validerSaisie()
@@ -78,7 +89,10 @@ class LignesCollecteAdapter(
         /** Écrit la quantité tapée, si elle est lisible et différente de celle déjà enregistrée. */
         private fun validerSaisie() {
             val courante = ligneCourante() ?: return
-            val q = quantiteAEcrire(binding.etQuantite.text?.toString(), courante.quantite) ?: return
+            val q = quantiteAEcrire(
+                binding.etQuantite.text?.toString(), courante.quantite, saisieModifiee
+            ) ?: return
+            saisieModifiee = false
             onQuantiteChanged(courante, q)
         }
 
