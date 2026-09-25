@@ -4,7 +4,7 @@ title: Fiabiliser l'import du catalogue CSV
 status: In Progress
 assignee: []
 created_date: '2026-09-17 15:52'
-updated_date: '2026-09-17 17:52'
+updated_date: '2026-09-25 09:17'
 labels: []
 dependencies: []
 ordinal: 3000
@@ -64,4 +64,8 @@ Verification runtime sur emulateur API 28, catalogue17022025.csv reel (2723 lign
 - AC6 : ecritures dans db.withTransaction ; le refus ci-dessus laisse le catalogue intact a 2723 articles.
 - AC8 : import joue deux fois de suite, second passage 11 nouveaux + 2712 mis a jour = 2723 articles, aucune disparition.
 - AC7 NON coche : le controle croise existe et tourne (import art_codebarre.csv, 267 entrees, 0 erreur) mais aucune donnee ne le viole, donc le rejet lui-meme n est pas exerce.
+
+AC7 - test instrumente ajoute (non encore execute) : app/src/androidTest/java/com/jdcosmetics/stockcollect/domain/service/CorrespondanceCodeBarreTest.kt. Base Room en memoire, vrai CsvImportService.importCorrespondance, CSV temporaire dans cacheDir via Uri.fromFile. 4 cas : (1) code-barre principal d'un AUTRE article -> ligne rejetee avec erreur nommee (ligne, code-barre, porteur), rien d'ecrit pour elle, le reste importe (1/10 = seuil non depasse) ; (2) code-barre principal du MEME article -> accepte et ecrit dans art_codebarre (condition proprietaire != codeProduit, CsvImportService.kt:336), redondant mais inoffensif ; (3) correspondance saine -> inseree ; (4) 2/10 conflits = 20 % -> import refuse, art_codebarre inchangee (retour anticipe avant la transaction, CsvImportService.kt:354). Aucun bug trouve dans le controle. assembleDebugAndroidTest et testDebugUnitTest (15/15) OK.
+
+Limite : le controle ne joue que dans un sens. appliquerCatalogue ne consulte pas art_codebarre : un reimport de catalogue qui donne comme code principal a P01 un code deja secondaire de P02 n'est pas detecte ; la correspondance devient morte (resoudre() trouve P01 d'abord). Non corrige, hors perimetre du test : a trancher.
 <!-- SECTION:NOTES:END -->
