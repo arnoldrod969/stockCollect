@@ -18,6 +18,7 @@ import com.jdcosmetics.stockcollect.data.db.entity.StatutSync
 import com.jdcosmetics.stockcollect.data.db.entity.TypeOperation
 import com.jdcosmetics.stockcollect.databinding.FragmentDetailSessionBinding
 import com.jdcosmetics.stockcollect.domain.service.estExportable
+import com.jdcosmetics.stockcollect.ui.afficherStatutSession
 import com.jdcosmetics.stockcollect.util.DateUtils
 import dagger.hilt.android.AndroidEntryPoint
 
@@ -66,13 +67,7 @@ class DetailSessionFragment : Fragment() {
             binding.tvNbLignes.text = "${session.nbLignes} ligne${if (session.nbLignes > 1) "s" else ""}"
             binding.tvLieu.text = session.lieu?.let { "Dépôt : $it" } ?: ""
             binding.tvObservations.text = session.observations?.let { "Observations : $it" } ?: ""
-            val statutTexte = when (session.statut) {
-                StatutSession.BROUILLON -> "Brouillon"
-                StatutSession.CLOTUREE -> "Clôturée"
-                StatutSession.EXPORTEE -> "Exportée"
-                else -> session.statut
-            }
-            binding.tvStatut.text = statutTexte
+            binding.tvStatut.afficherStatutSession(session.statut)
             binding.btnExporterCsv.isVisible = estExportable(session.statut)
             afficherBlocSync(session)
         }

@@ -14,6 +14,7 @@ import com.jdcosmetics.stockcollect.data.db.entity.StatutSync
 import com.jdcosmetics.stockcollect.data.db.entity.TypeOperation
 import com.jdcosmetics.stockcollect.databinding.ItemSessionHistoriqueBinding
 import com.jdcosmetics.stockcollect.domain.service.estExportable
+import com.jdcosmetics.stockcollect.ui.afficherStatutSession
 import com.jdcosmetics.stockcollect.util.DateUtils
 
 class HistoriqueAdapter(
@@ -29,13 +30,7 @@ class HistoriqueAdapter(
             binding.tvDate.text = DateUtils.toDisplay(session.dateHeureDebut)
             binding.tvNbLignes.text = "${session.nbLignes} ligne${if (session.nbLignes > 1) "s" else ""}"
 
-            val texte = when (session.statut) {
-                StatutSession.BROUILLON -> "Brouillon"
-                StatutSession.CLOTUREE -> "Clôturée"
-                StatutSession.EXPORTEE -> "Exportée"
-                else -> session.statut
-            }
-            binding.tvStatut.text = texte
+            binding.tvStatut.afficherStatutSession(session.statut)
 
             val brouillon = session.statut == StatutSession.BROUILLON
             binding.tvStatutSync.isVisible = !brouillon

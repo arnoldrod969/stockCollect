@@ -14,7 +14,7 @@
             <TextView android:id="@+id/tv_statut" android:layout_width="wrap_content" android:layout_height="wrap_content"
                 android:layout_marginStart="8dp"
                 android:textSize="11sp" android:paddingHorizontal="8dp" android:paddingVertical="4dp"
-                android:background="@drawable/bg_chip" android:textColor="@color/white"/>
+                android:background="@drawable/bg_chip" android:textColor="@color/blue_on_container"/>
         </LinearLayout>
         <TextView android:id="@+id/tv_date" android:layout_width="wrap_content" android:layout_height="wrap_content"
             android:textSize="12sp" android:textColor="@color/on_surface_variant"/>
