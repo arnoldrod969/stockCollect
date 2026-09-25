@@ -4,7 +4,7 @@ title: 'Hygiène : permissions inutiles, sauvegarde, tests'
 status: To Do
 assignee: []
 created_date: '2026-09-17 15:53'
-updated_date: '2026-09-18 17:02'
+updated_date: '2026-09-25 11:04'
 labels: []
 dependencies: []
 ordinal: 7000
@@ -49,4 +49,7 @@ Reste a trancher avec l'utilisateur, hors de ce lot :
 - le bandeau bleu de l'accueil double l'ActionBar, deux bandes bleues empilees ; le retirer change l'identite de l'ecran
 - item_session_export.xml est mort, aucun binding ne le reference
 - values-night reel, pour rendre un mode sombre complet
+
+AC4 : test instrumente app/src/androidTest/.../domain/service/BarcodeScanServiceTest.kt (resolution directe, via art_codebarre viaTableCB=true, secondaire d'un article ayant un principal, NonTrouve, trim). Compile, pas encore execute sur appareil. Aucun bug trouve dans BarcodeScanService.
+item_session_export.xml supprime : aucune reference (ItemSessionExportBinding / item_session_export) dans app/src.
 <!-- SECTION:NOTES:END -->

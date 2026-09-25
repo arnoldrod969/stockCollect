@@ -13,6 +13,7 @@ import com.jdcosmetics.stockcollect.data.remote.ResultatEtat
 import com.jdcosmetics.stockcollect.domain.service.ResultatSync
 import com.jdcosmetics.stockcollect.domain.service.SyncService
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -43,9 +44,17 @@ class DetailSessionViewModel @Inject constructor(
 
     private var idSession: Long = -1L
 
+    /**
+     * Collecteur du Flow des lignes. Le ViewModel survit à la recréation de la vue, et chaque
+     * `onViewCreated` rappelle [charger] : sans annulation, les collecteurs s'empilaient et
+     * republiaient tous la même liste (TASK-13, même correctif que `SaisieViewModel.lignesJob`).
+     */
+    private var lignesJob: Job? = null
+
     fun charger(idSession: Long) {
         this.idSession = idSession
-        viewModelScope.launch {
+        lignesJob?.cancel()
+        lignesJob = viewModelScope.launch {
             _session.value = sessionDao.getById(idSession)
             ligneDao.getLignesBySession(idSession).collect { liste ->
                 _lignes.value = liste
