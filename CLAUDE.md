@@ -71,8 +71,10 @@ StockCollect — Android app for JD Cosmetics warehouse staff. Import a product 
 ```bash
 ./gradlew :app:assembleDebug        # build (debug appId is com.jdcosmetics.stockcollect.debug)
 ./gradlew installDebug              # install on a connected device
-./gradlew :app:testDebugUnitTest    # unit tests (only CsvParserTest.kt exists today)
+./gradlew :app:testDebugUnitTest    # JVM unit tests (app/src/test)
 ./gradlew :app:lintDebug            # stock AGP lint — no ktlint/detekt/spotless configured
+./gradlew :app:assembleRelease      # R8 + shrinkResources, keep rules in app/proguard-rules.pro
+./gradlew :app:connectedDebugAndroidTest   # instrumented tests (Room in memory, migrations)
 ```
 
 Run a single test:
@@ -81,7 +83,15 @@ Run a single test:
 ./gradlew :app:testDebugUnitTest --tests "*CsvParserTest*"
 ```
 
-`./gradlew :app:assembleRelease` currently **fails**: `app/build.gradle.kts` points at `proguard-rules.pro`, which does not exist. R8 + `shrinkResources` are enabled with no keep rules for Room / Hilt / OpenCSV / ML Kit, so that file needs real content, not just to be created empty.
+Instrumented tests need a device: use the emulator (`ANDROID_SERIAL=127.0.0.1:21503`), never a
+physical phone — the run uninstalls the app and wipes its data. Anything that needs Room
+(imports, repository, migrations) lives in `app/src/androidTest`; pure logic (parsing, HTTP
+status mapping, formatting, validation) in `app/src/test`.
+
+`app/proguard-rules.pro` is real content, not a placeholder: R8 removes what nothing references
+statically (fragments named only in `nav_graph.xml`, classes read by reflection). A new class
+instantiated by reflection needs a keep rule there — `assembleRelease` passing proves nothing,
+only running the release build does.
 
 ## Stack
 
