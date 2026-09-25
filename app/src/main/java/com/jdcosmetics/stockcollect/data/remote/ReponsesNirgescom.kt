@@ -120,6 +120,39 @@ object ReponsesNirgescom {
     }
 
     /**
+     * `GET /catalog` et `GET /codes-barres`. [donnees] est `null` quand un `200` n'a pas pu être
+     * lu — surtout pas une liste vide, qui passerait pour un référentiel vide.
+     *
+     * Une liste **réellement** vide reste un `Ok` : décider qu'elle ne remplace rien appartient à
+     * l'import (`ImportNirgescom`), pas au classement des codes HTTP.
+     */
+    fun <T> referentiel(
+        code: Int,
+        detail: DetailApi?,
+        donnees: T?,
+        etag: String?
+    ): ResultatReferentiel<T> {
+        val texte = message(detail)
+        return when (code) {
+            HttpURLConnection.HTTP_OK ->
+                if (donnees != null) ResultatReferentiel.Ok(donnees, etag?.takeIf { it.isNotBlank() })
+                else ResultatReferentiel.ReponseInattendue(code, "Réponse illisible.")
+            HttpURLConnection.HTTP_NOT_MODIFIED -> ResultatReferentiel.Inchange
+            HttpURLConnection.HTTP_UNAUTHORIZED ->
+                ResultatReferentiel.CleRefusee(texte ?: "Clé d'API refusée.")
+            HttpURLConnection.HTTP_FORBIDDEN ->
+                ResultatReferentiel.NonAutorise(texte ?: "Accès refusé pour cette clé.")
+            HTTP_UNPROCESSABLE ->
+                ResultatReferentiel.ParametreRefuse(texte ?: "Requête refusée par le serveur.")
+            HttpURLConnection.HTTP_INTERNAL_ERROR ->
+                ResultatReferentiel.ConfigurationServeur(texte ?: "Erreur interne du serveur.")
+            HttpURLConnection.HTTP_UNAVAILABLE ->
+                ResultatReferentiel.Indisponible(texte ?: "L'API ne joint pas sa base.")
+            else -> ResultatReferentiel.ReponseInattendue(code, texte.orEmpty())
+        }
+    }
+
+    /**
      * `GET /magasins`. [magasins] est `null` quand un `200` n'a pas pu être lu : une liste vide
      * bloquerait l'écran Paramètres en prétendant que le magasin n'existe pas.
      */

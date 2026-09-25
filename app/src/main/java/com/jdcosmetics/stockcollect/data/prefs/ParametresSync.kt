@@ -61,6 +61,25 @@ class ParametresSync @Inject constructor(@ApplicationContext context: Context) {
         get() = prefs.getString(CLE_ETAG_MAGASINS, "").orEmpty()
         set(valeur) = prefs.edit().putString(CLE_ETAG_MAGASINS, valeur).apply()
 
+    /**
+     * `ETag` du dernier catalogue reçu de `GET /catalog` **et écrit en base**. Enregistré seulement
+     * après une écriture réussie (un import annulé à l'arbitrage n'en laisse pas), et effacé dès
+     * que le catalogue local change par une autre voie (import CSV) : un `304` doit vouloir dire
+     * « la tablette a déjà exactement cette version », pas « le serveur n'a pas bougé ».
+     */
+    var etagCatalogue: String
+        get() = prefs.getString(CLE_ETAG_CATALOGUE, "").orEmpty()
+        set(valeur) = prefs.edit().putString(CLE_ETAG_CATALOGUE, valeur).apply()
+
+    /**
+     * `ETag` de la dernière correspondance reçue de `GET /codes-barres` et écrite en base. Même
+     * règle que [etagCatalogue] ; effacé aussi à chaque écriture du catalogue, qui peut retirer des
+     * correspondances ou en rendre acceptables d'autres jusque-là refusées (article inconnu).
+     */
+    var etagCodesBarres: String
+        get() = prefs.getString(CLE_ETAG_CODES_BARRES, "").orEmpty()
+        set(valeur) = prefs.edit().putString(CLE_ETAG_CODES_BARRES, valeur).apply()
+
     /** Identifie la tablette dans les logs de l'API, pour retrouver qui a envoyé quoi. */
     var identifiantTablette: String
         get() = prefs.getString(CLE_TABLETTE, "").orEmpty()
@@ -78,5 +97,7 @@ class ParametresSync @Inject constructor(@ApplicationContext context: Context) {
         const val CLE_MAGASIN_LIBELLE = "magasin_libelle"
         const val CLE_ETAG_MAGASINS = "etag_magasins"
         const val CLE_TABLETTE = "identifiant_tablette"
+        const val CLE_ETAG_CATALOGUE = "etag_catalogue"
+        const val CLE_ETAG_CODES_BARRES = "etag_codes_barres"
     }
 }

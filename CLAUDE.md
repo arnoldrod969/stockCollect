@@ -15,12 +15,15 @@ Sections qui concernent l'app : §4 (endpoints), §5 (cycle de vie d'une session
 autorise le trafic en clair — l'API n'a pas de TLS sur le LAN et son adresse est une IP privée
 saisie à l'exécution, qu'Android ne sait pas exprimer autrement qu'en autorisant tout.
 
-Quatre routes sont branchées, toutes depuis `data/remote/NirgescomClient.kt` en `HttpURLConnection`
+Six routes sont branchées, toutes depuis `data/remote/NirgescomClient.kt` en `HttpURLConnection`
 (pas d'OkHttp ni de Retrofit : le volume ne le justifie pas) : `GET /health` (test de connexion,
 non authentifié), `GET /magasins` (liste des dépôts, avec `ETag` / `If-None-Match`),
-`POST /documents` (envoi d'une session, via `domain/service/SyncService.kt`) et
-`GET /documents/{session_id}` (état côté Nirgescom). Le reste du fonctionnement — collecte, import,
-export CSV — n'a besoin d'aucun réseau et doit le rester.
+`POST /documents` (envoi d'une session, via `domain/service/SyncService.kt`),
+`GET /documents/{session_id}` (état côté Nirgescom), et `GET /catalog` / `GET /codes-barres`
+(mise à jour du catalogue et des codes-barres secondaires depuis l'écran d'import, via
+`domain/service/ImportNirgescomService.kt`, avec `ETag`). Le reste du fonctionnement — collecte,
+import CSV, export CSV — n'a besoin d'aucun réseau et doit le rester : les imports par fichier
+restent à côté des mises à jour par l'API, jamais remplacés.
 
 Points de contact avec le modèle actuel, à connaître avant de toucher aux sessions :
 
@@ -103,7 +106,7 @@ Single-Activity (`ui/MainActivity.kt`) + Navigation Component with **Safe Args**
 
 Spread across five entities, a repository and a service — worth reading this before touching data code.
 
-- **`articles`** — the catalogue. PK `code_produit`, optional unique `code_barre_principal`, plus `nom_produit`, `quantite_ref`, `prix`. Loaded from the catalogue CSV.
+- **`articles`** — the catalogue. PK `code_produit`, optional unique `code_barre_principal`, plus `nom_produit`, `quantite_ref`, `prix`. Loaded from the catalogue CSV or from `GET /catalog`.
 - **`art_codebarre`** — secondary barcodes. PK `code_barre` → `code_produit`, for products with several packagings or lots.
 - **Two-step barcode resolution** (`domain/service/BarcodeScanService.resoudre()`): look up `articles.code_barre_principal`; if that misses, look up `art_codebarre` and re-resolve by `code_produit` (`viaTableCB = true` so the UI can say so); otherwise `NonTrouve`. There is **no create-article-on-the-fly path** — an unknown barcode is a dead end by design.
 - **Business rule — an article may carry several barcodes, but a barcode belongs to exactly one article.** The schema already enforces it *within* each table (unique index on `articles.code_barre_principal`, `code_barre` as PK of `art_codebarre`), but **nothing enforces it across the two** — so `importCorrespondance` checks it explicitly via `ArticleDao.getCodesBarresPrincipaux()`. Without that check a stray mapping would be dead code: `resoudre()` queries `articles` first and would never reach it.
@@ -111,7 +114,10 @@ Spread across five entities, a repository and a service — worth reading this b
   - Before writing, `ArticleDao.libererCodesBarres` detaches every incoming barcode from its current holder. Reassigning a barcode from one article to another would otherwise violate the unique index depending on `UPDATE` ordering.
   - **Priority rule across the two tables: the catalogue wins over `art_codebarre`.** When a re-imported catalogue gives as principal barcode a code that `art_codebarre` maps to *another* article, `analyserCatalogue` lists it (`AnalyseCatalogue.correspondancesRetirees`) and `appliquerCatalogue` deletes that mapping in the same transaction. No choice is offered — the user is only told which barcode left which article (arbitration dialog, else the import report). The reverse direction stays a rejected line in `importCorrespondance`.
   - Import lines whose code or name holds a control character (tab…) or a non-BMP emoji are **line errors** (counted in the 10 % threshold), judged by the very rules of the send, `ValidationEnvoi.problemeTexte` — never silently cleaned.
-  - Both imports also accept already-decoded rows (`analyserCatalogue(List<LigneCatalogue>)`, `importCorrespondance(List<Pair<codeBarre, codeProduit>>)`) for the API import: same checks, same arbitration.
+  - Both imports also accept already-decoded rows (`analyserCatalogue(List<LigneCatalogue>)`, `importCorrespondance(List<Pair<codeBarre, codeProduit>>)`), which is how the **API import** (`GET /catalog`, `GET /codes-barres`, TASK-16) goes through the very same checks, 10 % threshold and conflict arbitration — `ImportNirgescomService` adds no import rule of its own. Decisions are pure functions in `domain/service/ImportNirgescom.kt` (JVM-tested); the 200 bodies are decoded by streaming (`android.util.JsonReader`), not loaded as a `String` + `JSONObject`.
+    - Field mapping: `code_produit`, `code_barre` → `code_barre_principal`, `nom_produit`, `prix_detail` (shelf price) → `prix`; the other price levels are ignored. **The API has no `quantite_ref`**: an existing article keeps its value (`appliquerCatalogue(conserverQuantitesRef = true)`), a new one gets `0.0`.
+    - An empty `GET /catalog` is refused (most likely a dépôt code the server doesn't know). An **empty `GET /codes-barres` replaces nothing** — the server view is empty today while tablets carry ~266 secondary barcodes from the CSV — and the user is told so.
+    - `ETag`s (`ParametresSync.etagCatalogue` / `etagCodesBarres`) are stored only **after** a successful write, replayed only when the local table is non-empty, and cleared whenever the local copy changes another way: a CSV catalogue import clears both, any catalogue write clears the barcodes one, a CSV barcode import clears the barcodes one. A `304` must mean "the tablet already holds exactly this version".
   - The app **never merges two article records** on its own: it reports, correction belongs in Nirgescom.
 - **`sessions`** — one collection run of a `TypeOperation`. **Only `INVENTAIRE` can be created** — the Nouvelle Session screen offers a single card, because the Nirgescom API contract accepts only `INVENTAIRE` (and `COMMANDE`, from étape 2); anything else is rejected with a 422. `TypeOperation.ENTREE` / `SORTIE` are deliberately **kept as constants with their labels**: sessions of those types may already exist on deployed tablets and must stay readable and exportable in the Historique — the filter chips there still cover them. Don't reintroduce them as creatable types. Moves one-way `BROUILLON → CLOTUREE → EXPORTEE`. The transitions in `SessionDao` are guarded UPDATEs returning rows-affected: `cloturer` only matches `BROUILLON`, `marquerExportee` only matches `CLOTUREE`. **Irreversible on purpose** — there is no path back to BROUILLON.
 - **`lignes_collecte`** — one product + quantity inside a session. `code_barre_scanne` is null when the line was added by text search. `nom_produit_snap` is a deliberate snapshot of the product name so past sessions survive a catalogue re-import — don't "normalise" it away. `SessionRepository.ajouterLigne` enforces one line per `(session, code_produit)` by **summing** quantities on rescan rather than inserting a duplicate.

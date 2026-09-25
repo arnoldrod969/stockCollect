@@ -76,29 +76,44 @@ class CsvImportService @Inject constructor(
                         ligne = if (colonnes.size >= 4) CsvParser.mapperCatalogue(colonnes) else null,
                         nbColonnes = colonnes.size
                     )
-                }
+                },
+                Source.FICHIER
             )
         }
 
     /**
-     * Même analyse, sur des lignes déjà décodées (import depuis l'API, TASK-16). Les lignes sont
-     * numérotées par leur position, à partir de 1, dans les messages d'erreur. Une liste vide est
-     * refusée : elle ne doit pas passer pour un catalogue.
+     * Même analyse, sur des lignes déjà décodées (import depuis l'API Nirgescom, TASK-16). Les
+     * lignes sont numérotées par leur position, à partir de 1, dans les messages d'erreur. Une
+     * liste vide est refusée : elle ne doit pas passer pour un catalogue.
+     *
+     * L'API ne fournit pas de quantité de référence : écrire l'analyse avec
+     * `appliquerCatalogue(..., conserverQuantitesRef = true)` pour garder celle des articles
+     * existants au lieu de l'écraser par 0.
      */
     suspend fun analyserCatalogue(lignes: List<LigneCatalogue>): AnalyseResult =
         withContext(Dispatchers.IO) {
             if (lignes.isEmpty()) {
                 return@withContext AnalyseResult.Echec(
-                    "Aucun article reçu : le catalogue n'a pas été modifié."
+                    "Aucun article reçu de Nirgescom : le catalogue n'a pas été modifié."
                 )
             }
-            analyser(lignes.mapIndexed { index, ligne -> EntreeCatalogue(index + 1, ligne, 0) })
+            analyser(
+                lignes.mapIndexed { index, ligne -> EntreeCatalogue(index + 1, ligne, 0) },
+                Source.NIRGESCOM
+            )
         }
+
+    /**
+     * D'où viennent les lignes. Ne change **que les messages** d'échec : les contrôles, le seuil
+     * et l'écriture sont identiques. Un fichier se corrige ou se remplace ; une réponse de l'API
+     * ne se corrige que dans Nirgescom.
+     */
+    private enum class Source { FICHIER, NIRGESCOM }
 
     /** Une ligne à analyser. `ligne == null` : ligne CSV trop courte, [nbColonnes] dit combien. */
     private class EntreeCatalogue(val numLigne: Int, val ligne: LigneCatalogue?, val nbColonnes: Int)
 
-    private suspend fun analyser(entrees: List<EntreeCatalogue>): AnalyseResult {
+    private suspend fun analyser(entrees: List<EntreeCatalogue>, source: Source): AnalyseResult {
         val articles = mutableListOf<ArticleEntity>()
         val erreurs = mutableListOf<String>()
         val recollees = mutableListOf<String>()
@@ -180,15 +195,22 @@ class CsvImportService @Inject constructor(
         if (tauxErreur > Constants.IMPORT_SEUIL_ERREUR_POURCENTAGE) {
             return AnalyseResult.Echec(
                 "${erreurs.size} lignes illisibles sur ${entrees.size} : le catalogue n'a pas été " +
-                    "modifié. Vérifiez qu'il s'agit bien du fichier catalogue exporté " +
-                    "depuis Nirgescom.",
+                    "modifié. " + when (source) {
+                        Source.FICHIER -> "Vérifiez qu'il s'agit bien du fichier catalogue " +
+                            "exporté depuis Nirgescom."
+                        Source.NIRGESCOM -> "Les fiches article en cause sont à corriger dans " +
+                            "Nirgescom ; prévenez le service informatique."
+                    },
                 erreurs
             )
         }
 
         if (articles.isEmpty()) {
             return AnalyseResult.Echec(
-                "Aucun article lisible dans ce fichier. Le catalogue n'a pas été modifié.",
+                when (source) {
+                    Source.FICHIER -> "Aucun article lisible dans ce fichier."
+                    Source.NIRGESCOM -> "Aucun article lisible dans la réponse de Nirgescom."
+                } + " Le catalogue n'a pas été modifié.",
                 erreurs
             )
         }
@@ -211,10 +233,15 @@ class CsvImportService @Inject constructor(
     /**
      * Applique une analyse en base, selon la résolution choisie par l'utilisateur.
      * Tout se joue dans une transaction : à la moindre erreur, rien n'est écrit.
+     *
+     * [conserverQuantitesRef] : pour une source qui ne porte pas de quantité de référence (l'API
+     * Nirgescom), un article déjà en base garde sa `quantite_ref` au lieu de passer à 0 ; un
+     * article nouveau entre à 0. Le CSV, qui porte la colonne, laisse `false`.
      */
     suspend fun appliquerCatalogue(
         analyse: AnalyseCatalogue,
-        resolution: ResolutionConflit
+        resolution: ResolutionConflit,
+        conserverQuantitesRef: Boolean = false
     ): ImportResult = withContext(Dispatchers.IO) {
 
         val perdants = analyse.conflits.flatMap { conflit ->
@@ -240,7 +267,16 @@ class CsvImportService @Inject constructor(
             db.withTransaction {
                 val existants = articleDao.getAllCodeProduits().toHashSet()
                 val aInserer = aEcrire.filter { it.codeProduit !in existants }
-                val aMettreAJour = aEcrire.filter { it.codeProduit in existants }
+                val aMettreAJour = aEcrire.filter { it.codeProduit in existants }.let { liste ->
+                    if (!conserverQuantitesRef || liste.isEmpty()) liste
+                    else {
+                        val quantites = lireQuantitesRef()
+                        liste.map { article ->
+                            quantites[article.codeProduit]
+                                ?.let { article.copy(quantiteRef = it) } ?: article
+                        }
+                    }
+                }
 
                 // Le catalogue l'emporte sur la correspondance (TASK-11) : un code principal
                 // entrant rattaché dans art_codebarre à un AUTRE article en est retiré. Recalculé
@@ -290,6 +326,18 @@ class CsvImportService @Inject constructor(
                     "\n\n${e.message}"
             )
         }
+    }
+
+    /**
+     * `code_produit → quantite_ref` de tout le catalogue, en une requête. Lue directement plutôt
+     * que par un DAO : seul [appliquerCatalogue] en a besoin, dans sa transaction.
+     */
+    private fun lireQuantitesRef(): Map<String, Double> {
+        val quantites = HashMap<String, Double>()
+        db.query("SELECT code_produit, quantite_ref FROM articles", null).use { curseur ->
+            while (curseur.moveToNext()) quantites[curseur.getString(0)] = curseur.getDouble(1)
+        }
+        return quantites
     }
 
     /**
@@ -399,7 +447,8 @@ class CsvImportService @Inject constructor(
                         codeProduit = colonnes.getOrNull(Constants.COL_CB_CODE_PRODUIT),
                         nbColonnes = colonnes.size
                     )
-                }
+                },
+                Source.FICHIER
             )
         }
 
@@ -415,13 +464,15 @@ class CsvImportService @Inject constructor(
             if (correspondances.isEmpty()) {
                 return@withContext ImportResult(
                     success = false,
-                    messageErreur = "Aucun code-barre reçu : les codes-barres n'ont pas été modifiés."
+                    messageErreur = "Aucun code-barre reçu de Nirgescom : les codes-barres n'ont " +
+                        "pas été modifiés."
                 )
             }
             importer(
                 correspondances.mapIndexed { index, (codeBarre, codeProduit) ->
                     EntreeCorrespondance(index + 1, codeBarre, codeProduit, 2)
-                }
+                },
+                Source.NIRGESCOM
             )
         }
 
@@ -438,7 +489,7 @@ class CsvImportService @Inject constructor(
         val nbColonnes: Int
     )
 
-    private suspend fun importer(entrees: List<EntreeCorrespondance>): ImportResult {
+    private suspend fun importer(entrees: List<EntreeCorrespondance>, source: Source): ImportResult {
         // Un seul aller-retour en base au lieu d'un findByCodeProduit par ligne.
         val codeProduitsConnus = articleDao.getAllCodeProduits().toHashSet()
         // Codes-barres déjà attribués comme code-barre principal : la règle « un code-barre
@@ -452,6 +503,7 @@ class CsvImportService @Inject constructor(
         val erreurs = mutableListOf<String>()
         val dateImport = DateUtils.nowIso()
         val vus = hashSetOf<String>()
+        var horsCatalogue = 0
 
         entrees.forEach { entree ->
             val numLigne = entree.numLigne
@@ -482,12 +534,22 @@ class CsvImportService @Inject constructor(
             }
 
             if (codeProduit !in codeProduitsConnus) {
+                // GET /catalog ne renvoie que l'assortiment du dépôt de la clé, GET /codes-barres
+                // toute la correspondance (SPEC §8) : un article d'un autre dépôt n'y est pas une
+                // erreur, et le compter comme telle ferait tomber tout l'import sous le seuil des
+                // 10 % dès que la vue serveur sera remplie. Il est écarté et compté à part.
+                // Un fichier, lui, est fait pour la tablette : l'article absent reste une erreur.
+                if (source == Source.NIRGESCOM) {
+                    horsCatalogue++
+                    return@forEach
+                }
                 erreurs.add("Ligne $numLigne : article « $codeProduit » absent du catalogue")
                 return@forEach
             }
 
             if (!vus.add(codeBarre)) {
-                erreurs.add("Ligne $numLigne : code-barre « $codeBarre » déjà présent plus haut dans le fichier")
+                val ou = if (source == Source.FICHIER) "dans le fichier" else "dans la liste reçue"
+                erreurs.add("Ligne $numLigne : code-barre « $codeBarre » déjà présent plus haut $ou")
                 return@forEach
             }
 
@@ -509,14 +571,30 @@ class CsvImportService @Inject constructor(
             )
         }
 
-        val tauxErreur = erreurs.size.toDouble() / entrees.size
+        // Les lignes hors catalogue (API seulement) ne comptent ni en erreurs ni au dénominateur.
+        val nbExamines = entrees.size - horsCatalogue
+        if (nbExamines == 0) {
+            // Tout était hors catalogue : remplacer viderait la table pour rien.
+            return ImportResult(
+                success = false,
+                nbIgnores = horsCatalogue,
+                messageErreur = "Aucun des ${entrees.size} codes-barres reçus de Nirgescom ne " +
+                    "concerne un article du catalogue de la tablette : la correspondance " +
+                    "actuelle est conservée. Mettez d'abord le catalogue à jour."
+            )
+        }
+        val tauxErreur = erreurs.size.toDouble() / nbExamines
         if (tauxErreur > Constants.IMPORT_SEUIL_ERREUR_POURCENTAGE) {
             return ImportResult(
                 success = false,
                 nbErreurs = erreurs.size,
                 erreurs = erreurs,
-                messageErreur = "${erreurs.size} lignes illisibles sur ${entrees.size} : les " +
-                    "codes-barres n'ont pas été modifiés. Vérifiez le fichier."
+                messageErreur = "${erreurs.size} lignes illisibles sur $nbExamines : les " +
+                    "codes-barres n'ont pas été modifiés. " + when (source) {
+                        Source.FICHIER -> "Vérifiez le fichier."
+                        Source.NIRGESCOM -> "Les correspondances en cause sont à corriger dans " +
+                            "Nirgescom ; prévenez le service informatique."
+                    }
             )
         }
 
@@ -531,8 +609,14 @@ class CsvImportService @Inject constructor(
             ImportResult(
                 success = true,
                 nbImportes = entites.size,
+                nbIgnores = horsCatalogue,
                 nbErreurs = erreurs.size,
-                erreurs = erreurs
+                // Même canal que les retraits du catalogue : une information en tête, qui n'entre
+                // pas dans nbErreurs.
+                erreurs = listOfNotNull(
+                    if (horsCatalogue > 0) "$horsCatalogue codes-barres écartés : leur article " +
+                        "n'est pas au catalogue de ce dépôt" else null
+                ) + erreurs
             )
         } catch (e: Exception) {
             ImportResult(

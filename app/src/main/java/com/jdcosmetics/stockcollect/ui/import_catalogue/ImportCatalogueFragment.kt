@@ -68,6 +68,18 @@ class ImportCatalogueFragment : Fragment() {
         binding.btnChoisirCorrespondance.setOnClickListener {
             ouvrirSelecteurFichier(pickCorrespondanceLauncher)
         }
+        binding.btnCatalogueNirgescom.setOnClickListener { confirmerEtImporterCatalogueNirgescom() }
+        // Pas de confirmation, comme pour le fichier : l'avertissement de la carte suffit, et une
+        // réponse vide de Nirgescom ne remplace rien.
+        binding.btnCorrespondanceNirgescom.setOnClickListener {
+            viewModel.importerCodesBarresNirgescom()
+        }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        // La connexion a pu être réglée dans Paramètres depuis le dernier passage.
+        viewModel.rafraichirConfiguration()
     }
 
     private fun observeViewModel() {
@@ -76,10 +88,16 @@ class ImportCatalogueFragment : Fragment() {
             // L'import de correspondance refuse de tourner tant qu'il n'y a pas d'articles : le
             // laisser cliquable faisait choisir un fichier pour se voir refuser après coup.
             binding.btnChoisirCorrespondance.isEnabled = nb > 0
+            binding.btnCorrespondanceNirgescom.isEnabled = nb > 0
             binding.tvCorrespondanceAvertissement.text =
                 if (nb > 0) "⚠ L'import remplace toutes les correspondances existantes."
                 else "Importez d'abord le catalogue : les codes-barres se rattachent à des " +
                     "articles, il en faut en base."
+        }
+        viewModel.nirgescomConfigure.observe(viewLifecycleOwner) { configure ->
+            binding.btnCatalogueNirgescom.isVisible = configure
+            binding.btnCorrespondanceNirgescom.isVisible = configure
+            binding.tvNirgescomNonConfigure.isVisible = !configure
         }
         viewModel.nbCorrespondances.observe(viewLifecycleOwner) { nb ->
             binding.tvNbCorrespondances.text = nb.toString()
@@ -93,22 +111,32 @@ class ImportCatalogueFragment : Fragment() {
             when (state) {
                 is ImportUiState.Loading -> {
                     binding.progressCatalogue.isVisible = true
-                    binding.btnChoisirCatalogue.isEnabled = false
+                    activerBoutonsCatalogue(false)
                 }
                 is ImportUiState.ConflitsDetectes -> {
                     binding.progressCatalogue.isVisible = false
-                    binding.btnChoisirCatalogue.isEnabled = true
+                    activerBoutonsCatalogue(true)
                     afficherDialogConflits(state.analyse)
                 }
                 is ImportUiState.Success -> {
                     binding.progressCatalogue.isVisible = false
-                    binding.btnChoisirCatalogue.isEnabled = true
-                    afficherDialogResultat("Catalogue importé", state.result.toResume(), state.result.erreurs)
+                    activerBoutonsCatalogue(true)
+                    afficherDialogResultat(
+                        if (state.depuisNirgescom) "Catalogue mis à jour depuis Nirgescom"
+                        else "Catalogue importé",
+                        state.result.toResume(), state.result.erreurs
+                    )
+                    viewModel.resetCatalogueState()
+                }
+                is ImportUiState.Message -> {
+                    binding.progressCatalogue.isVisible = false
+                    activerBoutonsCatalogue(true)
+                    afficherDialogResultat(state.titre, state.message, state.erreurs)
                     viewModel.resetCatalogueState()
                 }
                 is ImportUiState.Error -> {
                     binding.progressCatalogue.isVisible = false
-                    binding.btnChoisirCatalogue.isEnabled = true
+                    activerBoutonsCatalogue(true)
                     // Dialogue modal, pas Snackbar : un import rejeté oblige à corriger le fichier
                     // source, ce qui suppose de lire quelles lignes ont échoué. Un message qui
                     // s'efface tout seul au bout de trois secondes, sans le détail, laissait le
@@ -118,7 +146,7 @@ class ImportCatalogueFragment : Fragment() {
                 }
                 else -> {
                     binding.progressCatalogue.isVisible = false
-                    binding.btnChoisirCatalogue.isEnabled = true
+                    activerBoutonsCatalogue(true)
                 }
             }
         }
@@ -127,26 +155,47 @@ class ImportCatalogueFragment : Fragment() {
             when (state) {
                 is ImportUiState.Loading -> {
                     binding.progressCorrespondance.isVisible = true
-                    binding.btnChoisirCorrespondance.isEnabled = false
+                    activerBoutonsCorrespondance(false)
                 }
                 is ImportUiState.Success -> {
                     binding.progressCorrespondance.isVisible = false
-                    binding.btnChoisirCorrespondance.isEnabled = catalogueCharge()
-                    afficherDialogResultat("Codes-barres importés", state.result.toResume(), state.result.erreurs)
+                    activerBoutonsCorrespondance(catalogueCharge())
+                    afficherDialogResultat(
+                        if (state.depuisNirgescom) "Codes-barres mis à jour depuis Nirgescom"
+                        else "Codes-barres importés",
+                        state.result.toResume(), state.result.erreurs
+                    )
+                    viewModel.resetCorrespondanceState()
+                }
+                is ImportUiState.Message -> {
+                    binding.progressCorrespondance.isVisible = false
+                    activerBoutonsCorrespondance(catalogueCharge())
+                    afficherDialogResultat(state.titre, state.message, state.erreurs)
                     viewModel.resetCorrespondanceState()
                 }
                 is ImportUiState.Error -> {
                     binding.progressCorrespondance.isVisible = false
-                    binding.btnChoisirCorrespondance.isEnabled = catalogueCharge()
+                    activerBoutonsCorrespondance(catalogueCharge())
                     afficherErreur(state.message)
                     viewModel.resetCorrespondanceState()
                 }
                 else -> {
                     binding.progressCorrespondance.isVisible = false
-                    binding.btnChoisirCorrespondance.isEnabled = catalogueCharge()
+                    activerBoutonsCorrespondance(catalogueCharge())
                 }
             }
         }
+    }
+
+    /** Fichier et Nirgescom écrivent la même table : pas deux imports du catalogue à la fois. */
+    private fun activerBoutonsCatalogue(actifs: Boolean) {
+        binding.btnChoisirCatalogue.isEnabled = actifs
+        binding.btnCatalogueNirgescom.isEnabled = actifs
+    }
+
+    private fun activerBoutonsCorrespondance(actifs: Boolean) {
+        binding.btnChoisirCorrespondance.isEnabled = actifs
+        binding.btnCorrespondanceNirgescom.isEnabled = actifs
     }
 
     /** L'étape 2 n'a de sens qu'avec des articles en base : le parseur refuse de tourner sans. */
@@ -166,6 +215,29 @@ class ImportCatalogueFragment : Fragment() {
                 .show()
         } else {
             viewModel.importerCatalogue(uri)
+        }
+    }
+
+    /**
+     * Même confirmation que pour un fichier quand un catalogue est déjà là. Le dépôt est nommé :
+     * Nirgescom renvoie l'assortiment du dépôt de la clé, pas un catalogue universel.
+     */
+    private fun confirmerEtImporterCatalogueNirgescom() {
+        val nbActuels = viewModel.nbArticles.value ?: 0
+        if (nbActuels > 0) {
+            MaterialAlertDialogBuilder(requireContext())
+                .setTitle("Mettre à jour le catalogue ?")
+                .setMessage(
+                    "Les articles du dépôt « ${viewModel.magasinConfigure} » vont être demandés " +
+                        "à Nirgescom et remplaceront ceux de la tablette. Les quantités de " +
+                        "référence actuelles sont conservées, et les sessions déjà collectées " +
+                        "ne changent pas."
+                )
+                .setPositiveButton("Mettre à jour") { _, _ -> viewModel.importerCatalogueNirgescom() }
+                .setNegativeButton("Annuler", null)
+                .show()
+        } else {
+            viewModel.importerCatalogueNirgescom()
         }
     }
 

@@ -29,7 +29,7 @@ data class ImportResult(
                     append("• $nbCorrespondancesRetirees codes-barres secondaires retirés : ")
                     append("le catalogue les donne à un autre article\n")
                 }
-                if (nbErreurs > 0) append("• $nbErreurs lignes refusées, à corriger dans le fichier")
+                if (nbErreurs > 0) append("• $nbErreurs lignes refusées, à corriger à la source (fichier ou Nirgescom)")
             }
         } else {
             "Rien n'a été modifié. ${messageErreur.orEmpty()}"

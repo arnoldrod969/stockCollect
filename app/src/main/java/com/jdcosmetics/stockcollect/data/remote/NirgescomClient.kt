@@ -1,10 +1,14 @@
 package com.jdcosmetics.stockcollect.data.remote
 
+import android.util.JsonReader
+import android.util.JsonToken
+import android.util.MalformedJsonException
 import com.jdcosmetics.stockcollect.data.prefs.ParametresSync
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
 import java.io.IOException
+import java.io.InputStreamReader
 import java.net.HttpURLConnection
 import java.net.MalformedURLException
 import java.net.SocketTimeoutException
@@ -105,6 +109,59 @@ sealed class ResultatEnvoi {
     data class ReponseInattendue(val code: Int, val detail: String) : ResultatEnvoi()
 }
 
+/**
+ * Un article tel que `GET /catalog` le renvoie (SPEC §8), réduit aux champs que la tablette garde.
+ *
+ * Tout est nullable : ce sont les colonnes de la vue `liste_article`, que rien ne garantit
+ * remplies. Les contrôles (code absent, nom trop long, caractères refusés) sont ceux de l'import
+ * CSV et se font plus loin, dans `CsvImportService`, pas au décodage.
+ *
+ * Les cinq autres niveaux de prix, `reference_origine` et `prix_revient` sont ignorés : l'app n'a
+ * qu'une colonne `prix`, et c'est `prix_detail`, le prix rayon, qui y va.
+ */
+data class ArticleDistant(
+    val codeProduit: String?,
+    val codeBarre: String?,
+    val nomProduit: String?,
+    val prixDetail: Double?
+)
+
+/** Une correspondance code-barres secondaire → code produit (`GET /codes-barres`, SPEC §8). */
+data class CodeBarreDistant(val codeBarre: String?, val codeProduit: String?)
+
+/**
+ * Résultat d'une consultation d'un référentiel mis en cache par `ETag` — `GET /catalog` et
+ * `GET /codes-barres`, qui répondent de la même façon (SPEC §4.6 et §8).
+ *
+ * [Inchange] est un **succès** : `304`, la copie locale est à jour, il n'y a rien à réécrire.
+ */
+sealed class ResultatReferentiel<out T> {
+    data class Ok<T>(val donnees: T, val etag: String?) : ResultatReferentiel<T>()
+    object Inchange : ResultatReferentiel<Nothing>()
+
+    /** `401` : clé absente ou inconnue. */
+    data class CleRefusee(val detail: String) : ResultatReferentiel<Nothing>()
+
+    /** `403` : la route n'en renvoie pas aujourd'hui, mais la clé serait alors en cause. */
+    data class NonAutorise(val detail: String) : ResultatReferentiel<Nothing>()
+
+    /**
+     * `422` : paramètre de requête inconnu (SPEC §4.6). L'app n'en envoie aucun : si ça arrive,
+     * l'app et l'API ne parlent plus le même contrat.
+     */
+    data class ParametreRefuse(val detail: String) : ResultatReferentiel<Nothing>()
+
+    /** `500` : clé sans `code_magasin` valide, vue absente… Pas réessayable en l'état. */
+    data class ConfigurationServeur(val detail: String) : ResultatReferentiel<Nothing>()
+
+    /** `503` : base injoignable. Se réessaie plus tard. */
+    data class Indisponible(val detail: String) : ResultatReferentiel<Nothing>()
+
+    data class Injoignable(val detail: String) : ResultatReferentiel<Nothing>()
+    data class UrlInvalide(val detail: String) : ResultatReferentiel<Nothing>()
+    data class ReponseInattendue(val code: Int, val detail: String) : ResultatReferentiel<Nothing>()
+}
+
 /** État d'une session côté Nirgescom (`GET /documents/{session_id}`). */
 data class EtatDocument(
     val total: Int,
@@ -143,7 +200,7 @@ sealed class ResultatEtat {
 /**
  * Client HTTP de l'API Nirgescom.
  *
- * `HttpURLConnection` plutôt qu'OkHttp ou Retrofit : quatre appels, en clair, sur un LAN, sans
+ * `HttpURLConnection` plutôt qu'OkHttp ou Retrofit : six appels, en clair, sur un LAN, sans
  * authentification négociée ni retry automatique à câbler. Une pile HTTP complète grossirait l'APK
  * et demanderait des keep rules R8 supplémentaires pour un bénéfice nul à cette échelle. Le seuil
  * serait un vrai besoin de streaming, de reprise, ou d'intercepteurs.
@@ -261,6 +318,173 @@ class NirgescomClient @Inject constructor(private val parametres: ParametresSync
     } catch (e: org.json.JSONException) {
         null
     }
+
+    /**
+     * `GET /catalog` — les articles du dépôt de la clé (SPEC §8). Aucun paramètre : la route n'en
+     * accepte pas et répond `422` au moindre (SPEC §4.6).
+     *
+     * [etag] vide : pas d'`If-None-Match`, le catalogue complet revient. C'est à l'appelant de
+     * décider quand rejouer l'ETag — seulement si la copie locale correspond encore à cette
+     * version-là.
+     */
+    suspend fun recupererCatalogue(etag: String): ResultatReferentiel<List<ArticleDistant>> =
+        recupererReferentiel(CHEMIN_CATALOGUE, etag) { lecteur ->
+            lireTableau(lecteur, "articles") { lireArticle(it) }
+        }
+
+    /** `GET /codes-barres` — la correspondance code-barres secondaire → code produit (SPEC §8). */
+    suspend fun recupererCodesBarres(etag: String): ResultatReferentiel<List<CodeBarreDistant>> =
+        recupererReferentiel(CHEMIN_CODES_BARRES, etag) { lecteur ->
+            lireTableau(lecteur, "codes_barres") { lireCodeBarre(it) }
+        }
+
+    /**
+     * Les deux routes de référentiel partagent tout sauf le décodage d'un élément.
+     *
+     * Le corps d'un `200` est lu **en flux** ([JsonReader]) : le catalogue d'un dépôt fait
+     * plusieurs milliers d'articles à dix champs chacun, dont la tablette n'en garde que quatre.
+     * Le charger en `String` puis en arbre `JSONObject` en aurait tenu trois copies en mémoire.
+     * Les erreurs, courtes, passent par [lireCorps] comme ailleurs.
+     */
+    private suspend fun <T> recupererReferentiel(
+        chemin: String,
+        etag: String,
+        decoder: (JsonReader) -> T?
+    ): ResultatReferentiel<T> = withContext(Dispatchers.IO) {
+        val url = try {
+            URL(ReponsesNirgescom.url(parametres.urlApi, chemin))
+        } catch (e: MalformedURLException) {
+            return@withContext ResultatReferentiel.UrlInvalide(
+                "Adresse du serveur illisible. Vérifiez les Paramètres."
+            )
+        }
+
+        var connexion: HttpURLConnection? = null
+        try {
+            connexion = (url.openConnection() as HttpURLConnection).apply {
+                requestMethod = "GET"
+                connectTimeout = DELAI_MS
+                // La requête du catalogue prend déjà ~2 s côté base (mesure SPEC), avant le
+                // transfert de plusieurs milliers d'articles sur le WiFi du magasin.
+                readTimeout = DELAI_REFERENTIEL_MS
+                setRequestProperty(EN_TETE_CLE, parametres.cleApi)
+                setRequestProperty("Accept", "application/json")
+                if (etag.isNotBlank()) setRequestProperty("If-None-Match", etag)
+            }
+            val code = connexion.responseCode
+
+            if (code == HttpURLConnection.HTTP_OK) {
+                val donnees = connexion.inputStream.use { flux ->
+                    decoderFlux(JsonReader(InputStreamReader(flux, Charsets.UTF_8)), decoder)
+                }
+                ReponsesNirgescom.referentiel(code, null, donnees, connexion.getHeaderField("ETag"))
+            } else {
+                val corps = lireCorps(connexion, code)
+                ReponsesNirgescom.referentiel<T>(code, lireDetail(corps), null, null)
+            }
+        } catch (e: SocketTimeoutException) {
+            ResultatReferentiel.Injoignable("Pas de réponse après ${DELAI_REFERENTIEL_MS / 1000} s.")
+        } catch (e: IOException) {
+            ResultatReferentiel.Injoignable(e.message ?: "Serveur injoignable.")
+        } finally {
+            connexion?.disconnect()
+        }
+    }
+
+    /**
+     * `null` sur un JSON malformé ou d'une autre forme que prévu, que
+     * [ReponsesNirgescom.referentiel] traite en réponse illisible. Une coupure réseau en cours de
+     * lecture, elle, n'est **pas** avalée : c'est une [IOException] ordinaire, qui remonte en
+     * « injoignable » — la réponse n'est pas illisible, elle est incomplète.
+     */
+    private fun <T> decoderFlux(lecteur: JsonReader, decoder: (JsonReader) -> T?): T? = try {
+        lecteur.use { decoder(it) }
+    } catch (e: MalformedJsonException) {
+        null
+    } catch (e: IllegalStateException) {
+        // Jeton inattendu : un objet là où un tableau était attendu, par exemple.
+        null
+    } catch (e: NumberFormatException) {
+        null
+    }
+
+    /**
+     * Le tableau [cle] d'un objet racine `{"<cle>": [...], "total": n}`. `null` si la clé manque :
+     * une réponse sans le tableau n'est pas un référentiel vide.
+     */
+    private fun <E> lireTableau(
+        lecteur: JsonReader,
+        cle: String,
+        lireElement: (JsonReader) -> E
+    ): List<E>? {
+        var elements: List<E>? = null
+        lecteur.beginObject()
+        while (lecteur.hasNext()) {
+            if (lecteur.nextName() == cle && lecteur.peek() == JsonToken.BEGIN_ARRAY) {
+                val liste = ArrayList<E>()
+                lecteur.beginArray()
+                while (lecteur.hasNext()) liste.add(lireElement(lecteur))
+                lecteur.endArray()
+                elements = liste
+            } else {
+                lecteur.skipValue()
+            }
+        }
+        lecteur.endObject()
+        return elements
+    }
+
+    private fun lireArticle(lecteur: JsonReader): ArticleDistant {
+        var codeProduit: String? = null
+        var codeBarre: String? = null
+        var nomProduit: String? = null
+        var prixDetail: Double? = null
+        lecteur.beginObject()
+        while (lecteur.hasNext()) {
+            when (lecteur.nextName()) {
+                "code_produit" -> codeProduit = lireTexte(lecteur)
+                "code_barre" -> codeBarre = lireTexte(lecteur)
+                "nom_produit" -> nomProduit = lireTexte(lecteur)
+                "prix_detail" -> prixDetail = lireNombre(lecteur)
+                else -> lecteur.skipValue()
+            }
+        }
+        lecteur.endObject()
+        return ArticleDistant(codeProduit, codeBarre, nomProduit, prixDetail)
+    }
+
+    private fun lireCodeBarre(lecteur: JsonReader): CodeBarreDistant {
+        var codeBarre: String? = null
+        var codeProduit: String? = null
+        lecteur.beginObject()
+        while (lecteur.hasNext()) {
+            when (lecteur.nextName()) {
+                "code_barre" -> codeBarre = lireTexte(lecteur)
+                "code_produit" -> codeProduit = lireTexte(lecteur)
+                else -> lecteur.skipValue()
+            }
+        }
+        lecteur.endObject()
+        return CodeBarreDistant(codeBarre, codeProduit)
+    }
+
+    /**
+     * Texte ou `null`. Un nombre est accepté et rendu sous sa forme textuelle : un code produit
+     * purement numérique pourrait sortir de la base en entier sans que la tablette y perde rien.
+     */
+    private fun lireTexte(lecteur: JsonReader): String? =
+        if (lecteur.peek() == JsonToken.NULL) {
+            lecteur.nextNull(); null
+        } else {
+            lecteur.nextString()
+        }
+
+    private fun lireNombre(lecteur: JsonReader): Double? =
+        if (lecteur.peek() == JsonToken.NULL) {
+            lecteur.nextNull(); null
+        } else {
+            lecteur.nextDouble()
+        }
 
     /**
      * `POST /documents` — envoi d'une session clôturée, session et lignes en un seul appel.
@@ -403,7 +627,12 @@ class NirgescomClient @Inject constructor(private val parametres: ParametresSync
         const val CHEMIN_SANTE = "/api/health"
         const val CHEMIN_MAGASINS = "/api/magasins"
         const val CHEMIN_DOCUMENTS = "/api/documents"
+        const val CHEMIN_CATALOGUE = "/api/catalog"
+        const val CHEMIN_CODES_BARRES = "/api/codes-barres"
         const val EN_TETE_CLE = "X-Api-Key"
+
+        /** Catalogue et codes-barres : requête lourde côté base, puis un gros transfert. */
+        const val DELAI_REFERENTIEL_MS = 60_000
 
         /** Un inventaire complet fait des milliers de lignes ; l'insertion prend son temps. */
         const val DELAI_ENVOI_MS = 60_000

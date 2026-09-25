@@ -219,6 +219,83 @@ class ReponsesNirgescomTest {
         assertTrue(ReponsesNirgescom.magasins(503, null, null, null) is ResultatMagasins.ApiSansBase)
     }
 
+    // --- GET /catalog et GET /codes-barres ----------------------------------------------------
+
+    private val article = ArticleDistant("1001010033", "6291106811234", "CREME MAINS", 1500.0)
+
+    @Test
+    fun `referentiel 200 est un succes qui porte son ETag`() {
+        val r = ReponsesNirgescom.referentiel(200, null, listOf(article), "\"abc\"")
+        assertEquals(ResultatReferentiel.Ok(listOf(article), "\"abc\""), r)
+    }
+
+    @Test
+    fun `referentiel 200 sans ETag ou avec un ETag blanc garde null`() {
+        val r = ReponsesNirgescom.referentiel(200, null, listOf(article), "  ")
+        assertEquals(ResultatReferentiel.Ok(listOf(article), null), r)
+    }
+
+    @Test
+    fun `referentiel 200 vide reste un succes, la decision revient a l'import`() {
+        val r = ReponsesNirgescom.referentiel(200, null, emptyList<CodeBarreDistant>(), "\"e\"")
+        assertEquals(ResultatReferentiel.Ok(emptyList<CodeBarreDistant>(), "\"e\""), r)
+    }
+
+    @Test
+    fun `referentiel 200 illisible n'est pas une liste vide`() {
+        val r = ReponsesNirgescom.referentiel<List<ArticleDistant>>(200, null, null, "\"e\"")
+        assertTrue(r is ResultatReferentiel.ReponseInattendue)
+        assertEquals(200, (r as ResultatReferentiel.ReponseInattendue).code)
+    }
+
+    @Test
+    fun `referentiel 304 est un succes sans donnees`() {
+        assertEquals(
+            ResultatReferentiel.Inchange,
+            ReponsesNirgescom.referentiel<List<ArticleDistant>>(304, null, null, "\"e\"")
+        )
+    }
+
+    @Test
+    fun `referentiel 401 403 422 500 503 sont distingues avec leur detail`() {
+        fun r(code: Int, t: String) =
+            ReponsesNirgescom.referentiel<List<ArticleDistant>>(code, texte(t), null, null)
+
+        assertEquals(
+            ResultatReferentiel.CleRefusee("Cle d'API absente ou inconnue"),
+            r(401, "Cle d'API absente ou inconnue")
+        )
+        assertEquals(ResultatReferentiel.NonAutorise("interdit"), r(403, "interdit"))
+        assertEquals(
+            ResultatReferentiel.ParametreRefuse("parametre inconnu (acceptes : aucun)"),
+            r(422, "parametre inconnu (acceptes : aucun)")
+        )
+        assertEquals(
+            ResultatReferentiel.ConfigurationServeur("Configuration de la cle incorrecte"),
+            r(500, "Configuration de la cle incorrecte")
+        )
+        assertEquals(ResultatReferentiel.Indisponible("Base injoignable"), r(503, "Base injoignable"))
+    }
+
+    @Test
+    fun `referentiel 422 en liste de champs garde une ligne par champ`() {
+        val d = DetailApi.Champs(listOf(ErreurChamp("limite", "parametre inconnu")))
+        val r = ReponsesNirgescom.referentiel<List<ArticleDistant>>(422, d, null, null)
+        assertEquals(ResultatReferentiel.ParametreRefuse("limite : parametre inconnu"), r)
+    }
+
+    @Test
+    fun `referentiel sans detail a un texte par defaut, code inconnu inattendu`() {
+        val r401 = ReponsesNirgescom.referentiel<List<ArticleDistant>>(401, null, null, null)
+        assertTrue((r401 as ResultatReferentiel.CleRefusee).detail.isNotBlank())
+        val r500 = ReponsesNirgescom.referentiel<List<ArticleDistant>>(500, null, null, null)
+        assertTrue((r500 as ResultatReferentiel.ConfigurationServeur).detail.isNotBlank())
+        assertEquals(
+            ResultatReferentiel.ReponseInattendue(418, ""),
+            ReponsesNirgescom.referentiel<List<ArticleDistant>>(418, null, null, null)
+        )
+    }
+
     // --- URL ---------------------------------------------------------------------------------
 
     @Test
