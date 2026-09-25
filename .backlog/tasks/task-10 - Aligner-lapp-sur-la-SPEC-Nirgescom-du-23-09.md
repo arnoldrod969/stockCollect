@@ -1,9 +1,11 @@
 ---
 id: TASK-10
 title: Aligner l'app sur la SPEC Nirgescom du 23/09
-status: To Do
-assignee: []
+status: In Progress
+assignee:
+  - '@claude'
 created_date: '2026-09-25 09:11'
+updated_date: '2026-09-25 09:20'
 labels: []
 dependencies:
   - TASK-8
@@ -28,3 +30,33 @@ La SPEC de nirgescom-api (docs/SPEC.md) a evolue du 18 au 23/09 (commits 4d88a16
 - [ ] #6 La correspondance statut HTTP vers resultat est couverte par des tests JVM, sans appel reseau reel
 - [ ] #7 La section Sync de CLAUDE.md reflete la SPEC du 23/09 (codes magasin numeriques, 500 non reessayable)
 <!-- AC:END -->
+
+## Implementation Plan
+
+<!-- SECTION:PLAN:BEGIN -->
+1. Extraire de NirgescomClient la correspondance (code HTTP, detail decode, corps decode) -> Resultat* en fonctions pures (data/remote/ReponsesNirgescom.kt), le decodage org.json restant dans le client (org.json n'est pas utilisable en test JVM).
+2. POST /documents : 500 -> ResultatEnvoi.ConfigurationServeur (non reessayable, message 'configuration du serveur'), 403 'session_id ... appartient a un autre magasin' -> ResultatEnvoi.SessionAutreMagasin distinct de MagasinRefuse, 400 -> Invalide.
+3. GET /documents/{id} : 403 -> NonAutorisee, 422 -> IdentifiantInvalide, 500 -> ConfigurationServeur ; messages dans DetailSessionViewModel.
+4. GET /magasins : 500 -> ConfigurationServeur ; message dans ParametresViewModel.
+5. SyncService : validation avant envoi (fonction pure) : espaces autour de code_produit/code_barre, emoji/controle dans tout texte, longueurs, quantite <0, >999999.999 ou >3 decimales telle que serialisee ; message nommant l'article. Aucune valeur modifiee.
+6. URL des routes construite par une fonction pure sans parametre de requete, testee.
+7. Tests JVM JUnit4 : correspondance statut -> resultat et validation avant envoi.
+8. CLAUDE.md section Sync : exemples de codes/libelles magasin, 500 non reessayable.
+9. Compiler : testDebugUnitTest et assembleDebug.
+<!-- SECTION:PLAN:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+Implementation (worktree agent, non commitee) :
+- data/remote/ReponsesNirgescom.kt (nouveau) : correspondance pure code HTTP + detail decode -> ResultatEnvoi/Etat/Magasins, et url() sans parametre de requete. NirgescomClient ne fait plus que E/S + decodage org.json.
+- POST /documents : 500 -> ConfigurationServeur (message IT, pas WiFi, ne promet pas qu'un reessai suffit ; statut ECHEC_SYNC, envoi toujours propose) ; 403 'session_id ... appartient a un autre magasin' -> SessionAutreMagasin (reconnu au texte de detail) ; 403 num_document reste MagasinRefuse ; 400 -> Invalide (avant : reessayable).
+- GET /documents/{id} : 403 -> NonAutorisee (avant : confondu avec cle refusee), 422 -> IdentifiantInvalide, 500 -> ConfigurationServeur.
+- GET /magasins : 500 -> ConfigurationServeur (avant : reponse inattendue) ; 503 decrit comme base injoignable, reessayable.
+- SyncService : ValidationEnvoi avant envoi (espaces autour des codes, emoji/surrogate et controle < 0x20 ou 0x7F dans tout texte, longueurs 50/255/100/100, quantite <0, >999999.999 ou >3 decimales telle que serialisee par org.json). Rien n'est modifie ; ResultatSync.Impossible, aucun statut ecrit.
+- Aucune route GET n'envoie de parametre de requete (verifie a la lecture, url() teste).
+- Codes magasin : aucun format suppose dans l'app ; SPEC cite aussi 220301A1 (alphanumerique).
+- CLAUDE.md section Sync mise a jour.
+Tests : ReponsesNirgescomTest (30), ValidationEnvoiTest (14), CsvParserTest (15) verts ; testDebugUnitTest + assembleDebug BUILD SUCCESSFUL.
+Constats hors zone : somme flottante des rescans (SessionRepository.ajouterLigne) peut produire 0.30000000000000004 -> desormais bloque avant envoi, mais la cause reste ; un nom catalogue avec tabulation (CSV separe par ;) serait bloque ; CsvParser.parseLigne trimme deja tous les champs, donc l'import ne laisse pas passer d'espaces autour des codes.
+<!-- SECTION:NOTES:END -->

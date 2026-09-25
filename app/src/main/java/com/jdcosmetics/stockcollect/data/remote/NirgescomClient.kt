@@ -30,7 +30,13 @@ sealed class ResultatSante {
     data class ReponseInattendue(val code: Int) : ResultatSante()
 }
 
-/** Un dépôt tel que `GET /magasins` le renvoie. `nomMagasin` est nullable côté API. */
+/**
+ * Un dépôt tel que `GET /magasins` le renvoie. `nomMagasin` est nullable côté API.
+ *
+ * `codeMagasin` est le `siCode` Nirgescom, traité comme un texte opaque : les codes réels sont
+ * surtout numériques (`22020104`) mais pas tous (`220301A1`). Rien dans l'app ne doit en supposer
+ * le format.
+ */
 data class MagasinDistant(val codeMagasin: String, val nomMagasin: String?)
 
 /**
@@ -46,8 +52,14 @@ sealed class ResultatMagasins {
     /** `401` : la clé d'API est refusée. Rien à voir avec le réseau, d'où un cas à part. */
     data class CleRefusee(val detail: String) : ResultatMagasins()
 
-    /** `503` : l'API répond mais ne peut pas lire la base (vue absente, droits manquants). */
+    /** `503` : l'API répond mais ne joint pas sa base. Se réessaie plus tard. */
     data class ApiSansBase(val detail: String) : ResultatMagasins()
+
+    /**
+     * `500` : serveur mal configuré — vue absente, `GRANT` incomplet, clé sans `code_magasin`
+     * valide (SPEC §4.2 et §4.6). Ni la tablette ni un réessai n'y peuvent rien.
+     */
+    data class ConfigurationServeur(val detail: String) : ResultatMagasins()
 
     data class Injoignable(val detail: String) : ResultatMagasins()
     data class UrlInvalide(val detail: String) : ResultatMagasins()
@@ -67,12 +79,25 @@ sealed class ResultatEnvoi {
     /** `403` : le magasin envoyé ne correspond pas à celui de la clé. */
     data class MagasinRefuse(val detail: String) : ResultatEnvoi()
 
+    /**
+     * `403` : ce `session_id` est déjà rangé sous un autre magasin — la session a été envoyée
+     * une première fois avec la clé d'un autre dépôt. Réessayer ne la déplacera pas.
+     */
+    data class SessionAutreMagasin(val detail: String) : ResultatEnvoi()
+
     data class CleRefusee(val detail: String) : ResultatEnvoi()
 
-    /** `422` : validation, détail par champ. Inutile de réessayer tel quel. */
+    /** `422` (validation, détail par champ) ou `400`. Inutile de réessayer tel quel. */
     data class Invalide(val detail: String) : ResultatEnvoi()
 
-    /** `503` / `500` : réessayable plus tard, contrairement aux précédents. */
+    /**
+     * `500` : clé sans `code_magasin` valide (« Configuration de la cle incorrecte »), base mal
+     * configurée ou erreur interne. **Pas** réessayable en l'état : il faut intervenir sur le
+     * serveur (SPEC §4.2).
+     */
+    data class ConfigurationServeur(val detail: String) : ResultatEnvoi()
+
+    /** `503` : base injoignable. Le seul refus serveur qui se réessaie. */
     data class Indisponible(val detail: String) : ResultatEnvoi()
 
     data class Injoignable(val detail: String) : ResultatEnvoi()
@@ -96,8 +121,21 @@ sealed class ResultatEtat {
     /** `404` : l'API ne connaît aucune ligne pour cette session. */
     object Inconnue : ResultatEtat()
 
+    /** `401` : clé absente ou inconnue. */
     data class CleRefusee(val detail: String) : ResultatEtat()
+
+    /** `403` : la session appartient à un autre magasin que celui de la clé. */
+    data class NonAutorisee(val detail: String) : ResultatEtat()
+
+    /** `422` : l'identifiant de session n'est pas un UUID. */
+    data class IdentifiantInvalide(val detail: String) : ResultatEtat()
+
+    /** `500` : serveur mal configuré, voir [ResultatEnvoi.ConfigurationServeur]. */
+    data class ConfigurationServeur(val detail: String) : ResultatEtat()
+
+    /** `503` : base injoignable. */
     data class Indisponible(val detail: String) : ResultatEtat()
+
     data class Injoignable(val detail: String) : ResultatEtat()
     data class ReponseInattendue(val code: Int, val detail: String) : ResultatEtat()
 }
@@ -109,6 +147,9 @@ sealed class ResultatEtat {
  * authentification négociée ni retry automatique à câbler. Une pile HTTP complète grossirait l'APK
  * et demanderait des keep rules R8 supplémentaires pour un bénéfice nul à cette échelle. Le seuil
  * serait un vrai besoin de streaming, de reprise, ou d'intercepteurs.
+ *
+ * Ce fichier ne fait que les E/S et le décodage JSON ; ce que veut dire un code HTTP est décidé
+ * par [ReponsesNirgescom], testable sans réseau ni SDK Android.
  */
 @Singleton
 class NirgescomClient @Inject constructor(private val parametres: ParametresSync) {
@@ -119,7 +160,7 @@ class NirgescomClient @Inject constructor(private val parametres: ParametresSync
      */
     suspend fun tester(urlRacine: String): ResultatSante = withContext(Dispatchers.IO) {
         val url = try {
-            URL("${urlRacine.trim().trimEnd('/')}$CHEMIN_SANTE")
+            URL(ReponsesNirgescom.url(urlRacine, CHEMIN_SANTE))
         } catch (e: MalformedURLException) {
             return@withContext ResultatSante.UrlInvalide(
                 "Adresse illisible. Attendu : http://192.168.1.10:8000"
@@ -134,12 +175,7 @@ class NirgescomClient @Inject constructor(private val parametres: ParametresSync
                 readTimeout = DELAI_MS
             }
             val code = connexion.responseCode
-            // 503 a un corps utile, mais il arrive par errorStream et non par inputStream.
-            val corps = if (code < HttpURLConnection.HTTP_BAD_REQUEST) {
-                connexion.inputStream.bufferedReader().use { it.readText() }
-            } else {
-                connexion.errorStream?.bufferedReader()?.use { it.readText() }.orEmpty()
-            }
+            val corps = lireCorps(connexion, code)
 
             when (code) {
                 HttpURLConnection.HTTP_OK -> {
@@ -178,7 +214,7 @@ class NirgescomClient @Inject constructor(private val parametres: ParametresSync
         etag: String = parametres.etagMagasins
     ): ResultatMagasins = withContext(Dispatchers.IO) {
         val url = try {
-            URL("${urlRacine.trim().trimEnd('/')}$CHEMIN_MAGASINS")
+            URL(ReponsesNirgescom.url(urlRacine, CHEMIN_MAGASINS))
         } catch (e: MalformedURLException) {
             return@withContext ResultatMagasins.UrlInvalide(
                 "Adresse illisible. Attendu : http://192.168.1.10:8000"
@@ -195,23 +231,12 @@ class NirgescomClient @Inject constructor(private val parametres: ParametresSync
                 if (etag.isNotBlank()) setRequestProperty("If-None-Match", etag)
             }
             val code = connexion.responseCode
-            val corps = if (code < HttpURLConnection.HTTP_BAD_REQUEST) {
-                connexion.inputStream?.bufferedReader()?.use { it.readText() }.orEmpty()
-            } else {
-                connexion.errorStream?.bufferedReader()?.use { it.readText() }.orEmpty()
-            }
+            val corps = lireCorps(connexion, code)
+            val magasins = if (code == HttpURLConnection.HTTP_OK) lireMagasins(corps) else null
 
-            when (code) {
-                HttpURLConnection.HTTP_OK -> lireMagasins(corps, connexion.getHeaderField("ETag"))
-                HttpURLConnection.HTTP_NOT_MODIFIED -> ResultatMagasins.Inchangee
-                HttpURLConnection.HTTP_UNAUTHORIZED ->
-                    ResultatMagasins.CleRefusee(messageApi(corps) ?: "Clé d'API refusée.")
-                HttpURLConnection.HTTP_UNAVAILABLE ->
-                    ResultatMagasins.ApiSansBase(
-                        messageApi(corps) ?: "L'API ne peut pas lire la base des dépôts."
-                    )
-                else -> ResultatMagasins.ReponseInattendue(code, messageApi(corps).orEmpty())
-            }
+            ReponsesNirgescom.magasins(
+                code, lireDetail(corps), magasins, connexion.getHeaderField("ETag")
+            )
         } catch (e: SocketTimeoutException) {
             ResultatMagasins.Injoignable("Pas de réponse après ${DELAI_MS / 1000} s.")
         } catch (e: IOException) {
@@ -221,13 +246,10 @@ class NirgescomClient @Inject constructor(private val parametres: ParametresSync
         }
     }
 
-    /**
-     * Un corps illisible est traité comme une réponse inattendue plutôt que comme une liste vide :
-     * une liste vide bloquerait l'écran Paramètres en prétendant que le magasin n'existe pas.
-     */
-    private fun lireMagasins(corps: String, etag: String?): ResultatMagasins = try {
+    /** `null` sur un corps illisible, que [ReponsesNirgescom.magasins] traite en réponse inattendue. */
+    private fun lireMagasins(corps: String): List<MagasinDistant>? = try {
         val tableau = JSONObject(corps).getJSONArray("magasins")
-        val magasins = (0 until tableau.length()).map { i ->
+        (0 until tableau.length()).map { i ->
             val objet = tableau.getJSONObject(i)
             MagasinDistant(
                 codeMagasin = objet.getString("code_magasin"),
@@ -236,9 +258,8 @@ class NirgescomClient @Inject constructor(private val parametres: ParametresSync
                 else objet.getString("nom_magasin")
             )
         }
-        ResultatMagasins.Ok(magasins, etag)
     } catch (e: org.json.JSONException) {
-        ResultatMagasins.ReponseInattendue(HttpURLConnection.HTTP_OK, "Réponse illisible.")
+        null
     }
 
     /**
@@ -249,7 +270,7 @@ class NirgescomClient @Inject constructor(private val parametres: ParametresSync
      */
     suspend fun envoyerDocument(corps: JSONObject): ResultatEnvoi = withContext(Dispatchers.IO) {
         val url = try {
-            URL("${parametres.urlApi.trimEnd('/')}$CHEMIN_DOCUMENTS")
+            URL(ReponsesNirgescom.url(parametres.urlApi, CHEMIN_DOCUMENTS))
         } catch (e: MalformedURLException) {
             return@withContext ResultatEnvoi.UrlInvalide(
                 "Adresse du serveur illisible. Vérifiez les Paramètres."
@@ -271,27 +292,10 @@ class NirgescomClient @Inject constructor(private val parametres: ParametresSync
             connexion.outputStream.bufferedWriter().use { it.write(corps.toString()) }
 
             val code = connexion.responseCode
-            val texte = if (code < HttpURLConnection.HTTP_BAD_REQUEST) {
-                connexion.inputStream?.bufferedReader()?.use { it.readText() }.orEmpty()
-            } else {
-                connexion.errorStream?.bufferedReader()?.use { it.readText() }.orEmpty()
-            }
+            val texte = lireCorps(connexion, code)
+            val recap = if (code == HttpURLConnection.HTTP_CREATED) lireRecapitulatif(texte) else null
 
-            when (code) {
-                HttpURLConnection.HTTP_CREATED -> lireRecapitulatif(texte)
-                HttpURLConnection.HTTP_UNAUTHORIZED ->
-                    ResultatEnvoi.CleRefusee(messageApi(texte) ?: "Clé d'API refusée.")
-                HttpURLConnection.HTTP_FORBIDDEN ->
-                    ResultatEnvoi.MagasinRefuse(
-                        messageApi(texte) ?: "Magasin non autorisé pour cette clé."
-                    )
-                422 -> ResultatEnvoi.Invalide(messageApi(texte) ?: "Données refusées par le serveur.")
-                HttpURLConnection.HTTP_UNAVAILABLE, HttpURLConnection.HTTP_INTERNAL_ERROR ->
-                    ResultatEnvoi.Indisponible(
-                        messageApi(texte) ?: "Le serveur ne peut pas enregistrer pour l'instant."
-                    )
-                else -> ResultatEnvoi.ReponseInattendue(code, messageApi(texte).orEmpty())
-            }
+            ReponsesNirgescom.envoi(code, lireDetail(texte), recap)
         } catch (e: SocketTimeoutException) {
             ResultatEnvoi.Injoignable("Pas de réponse après ${DELAI_ENVOI_MS / 1000} s.")
         } catch (e: IOException) {
@@ -302,22 +306,25 @@ class NirgescomClient @Inject constructor(private val parametres: ParametresSync
     }
 
     /**
-     * Un `201` au corps illisible reste un succès : la session **est** arrivée. Ne retenir que les
-     * compteurs échoue, pas l'envoi — réessayer sur cette base réenverrait des lignes déjà en base.
+     * `null` sur un corps illisible : [ReponsesNirgescom.envoi] en fait quand même un succès, la
+     * session **est** arrivée. Réessayer réenverrait des lignes déjà en base.
      */
-    private fun lireRecapitulatif(corps: String): ResultatEnvoi = runCatching {
+    private fun lireRecapitulatif(corps: String): RecapEnvoi? = runCatching {
         val objet = JSONObject(corps)
-        ResultatEnvoi.Ok(
+        RecapEnvoi(
             recues = objet.optInt("lignes_recues", -1),
             inserees = objet.optInt("lignes_inserees", -1),
             ignorees = objet.optInt("lignes_ignorees", -1)
         )
-    }.getOrDefault(ResultatEnvoi.Ok(-1, -1, -1))
+    }.getOrNull()
 
-    /** `GET /documents/{session_id}` — état de traitement côté Nirgescom (SPEC §4.3). */
+    /**
+     * `GET /documents/{session_id}` — état de traitement côté Nirgescom (SPEC §4.3). Aucun
+     * paramètre de requête : la route répond `422` à tout paramètre (SPEC §4.6).
+     */
     suspend fun consulterDocument(uuidSession: String): ResultatEtat = withContext(Dispatchers.IO) {
         val url = try {
-            URL("${parametres.urlApi.trimEnd('/')}$CHEMIN_DOCUMENTS/$uuidSession")
+            URL(ReponsesNirgescom.url(parametres.urlApi, "$CHEMIN_DOCUMENTS/$uuidSession"))
         } catch (e: MalformedURLException) {
             return@withContext ResultatEtat.ReponseInattendue(0, "Adresse du serveur illisible.")
         }
@@ -331,21 +338,10 @@ class NirgescomClient @Inject constructor(private val parametres: ParametresSync
                 setRequestProperty(EN_TETE_CLE, parametres.cleApi)
             }
             val code = connexion.responseCode
-            val texte = if (code < HttpURLConnection.HTTP_BAD_REQUEST) {
-                connexion.inputStream?.bufferedReader()?.use { it.readText() }.orEmpty()
-            } else {
-                connexion.errorStream?.bufferedReader()?.use { it.readText() }.orEmpty()
-            }
+            val texte = lireCorps(connexion, code)
+            val etat = if (code == HttpURLConnection.HTTP_OK) lireEtat(texte) else null
 
-            when (code) {
-                HttpURLConnection.HTTP_OK -> lireEtat(texte)
-                HttpURLConnection.HTTP_NOT_FOUND -> ResultatEtat.Inconnue
-                HttpURLConnection.HTTP_UNAUTHORIZED, HttpURLConnection.HTTP_FORBIDDEN ->
-                    ResultatEtat.CleRefusee(messageApi(texte) ?: "Clé d'API refusée.")
-                HttpURLConnection.HTTP_UNAVAILABLE, HttpURLConnection.HTTP_INTERNAL_ERROR ->
-                    ResultatEtat.Indisponible(messageApi(texte) ?: "Serveur indisponible.")
-                else -> ResultatEtat.ReponseInattendue(code, messageApi(texte).orEmpty())
-            }
+            ReponsesNirgescom.etat(code, lireDetail(texte), etat)
         } catch (e: SocketTimeoutException) {
             ResultatEtat.Injoignable("Pas de réponse après ${DELAI_MS / 1000} s.")
         } catch (e: IOException) {
@@ -355,42 +351,51 @@ class NirgescomClient @Inject constructor(private val parametres: ParametresSync
         }
     }
 
-    private fun lireEtat(corps: String): ResultatEtat = try {
+    private fun lireEtat(corps: String): EtatDocument? = try {
         val objet = JSONObject(corps)
         val tableau = objet.optJSONArray("erreurs")
         val erreurs = (0 until (tableau?.length() ?: 0)).map { i ->
             val e = tableau!!.getJSONObject(i)
             "${e.optString("code_produit")} : ${e.optString("message_erreur")}"
         }
-        ResultatEtat.Ok(
-            EtatDocument(
-                total = objet.optInt("total"),
-                enAttente = objet.optInt("en_attente"),
-                traite = objet.optInt("traite"),
-                erreur = objet.optInt("erreur"),
-                dateReception = objet.optString("date_reception").takeIf { it.isNotBlank() },
-                erreurs = erreurs
-            )
+        EtatDocument(
+            total = objet.optInt("total"),
+            enAttente = objet.optInt("en_attente"),
+            traite = objet.optInt("traite"),
+            erreur = objet.optInt("erreur"),
+            dateReception = objet.optString("date_reception").takeIf { it.isNotBlank() },
+            erreurs = erreurs
         )
     } catch (e: org.json.JSONException) {
-        ResultatEtat.ReponseInattendue(HttpURLConnection.HTTP_OK, "Réponse illisible.")
+        null
     }
 
+    /** Les erreurs (≥ 400) arrivent par `errorStream`, pas par `inputStream`. */
+    private fun lireCorps(connexion: HttpURLConnection, code: Int): String =
+        if (code < HttpURLConnection.HTTP_BAD_REQUEST) {
+            connexion.inputStream?.bufferedReader()?.use { it.readText() }.orEmpty()
+        } else {
+            connexion.errorStream?.bufferedReader()?.use { it.readText() }.orEmpty()
+        }
+
     /**
-     * L'API renvoie ses erreurs sous `{"detail": ...}` (SPEC §4). En `422`, `detail` n'est pas une
-     * chaîne mais une liste de `{champ, message}` : sans ce cas, `optString` renverrait vide et
-     * l'écran afficherait « données refusées » sans jamais dire lequel des champs pose problème.
+     * Décode `{"detail": ...}` (SPEC §4) : chaîne, ou liste de `{champ, message}` en `422`.
+     * `null` pour un corps vide, non JSON ou sans `detail` exploitable ; `message` et `erreur`
+     * sont gardés en repli pour un intermédiaire (proxy) qui répondrait autrement.
      */
-    private fun messageApi(corps: String): String? = runCatching {
+    private fun lireDetail(corps: String): DetailApi? = runCatching {
         val objet = JSONObject(corps)
         objet.optJSONArray("detail")?.let { tableau ->
-            return@runCatching (0 until tableau.length()).joinToString("\n") { i ->
-                val e = tableau.getJSONObject(i)
-                "${e.optString("champ")} : ${e.optString("message")}"
-            }.takeIf { it.isNotBlank() }
+            return@runCatching DetailApi.Champs(
+                (0 until tableau.length()).map { i ->
+                    val e = tableau.optJSONObject(i)
+                    ErreurChamp(e?.optString("champ").orEmpty(), e?.optString("message").orEmpty())
+                }
+            )
         }
         listOf("detail", "message", "erreur")
             .firstNotNullOfOrNull { cle -> objet.optString(cle).takeIf { it.isNotBlank() } }
+            ?.let { DetailApi.Texte(it) }
     }.getOrNull()
 
     private companion object {

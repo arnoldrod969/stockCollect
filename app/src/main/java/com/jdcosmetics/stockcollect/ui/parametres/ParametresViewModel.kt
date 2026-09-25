@@ -192,8 +192,15 @@ class ParametresViewModel @Inject constructor(
                     )
                 is ResultatMagasins.ApiSansBase ->
                     DepotsUiState.Echec(
-                        "Le serveur ne peut pas lire la liste des dépôts. Prévenez le service " +
+                        "Le serveur ne joint pas sa base de données pour le moment. Réessayez " +
+                            "dans quelques minutes ; si cela dure, prévenez le service " +
                             "informatique.\n\n${r.detail}"
+                    )
+                is ResultatMagasins.ConfigurationServeur ->
+                    DepotsUiState.Echec(
+                        "Le serveur Nirgescom est mal configuré (clé d'API ou base de données " +
+                            "côté serveur). Ni le WiFi ni la tablette ne sont en cause : " +
+                            "prévenez le service informatique.\n\n${r.detail}"
                     )
                 is ResultatMagasins.Injoignable ->
                     DepotsUiState.Echec(

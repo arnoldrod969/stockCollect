@@ -123,6 +123,20 @@ class DetailSessionViewModel @Inject constructor(
                     "Clé d'API refusée par Nirgescom. Vérifiez la clé dans Paramètres ; si elle " +
                         "est correcte, appelez le service informatique.\n\n${r.detail}"
                 )
+                is ResultatEtat.NonAutorisee -> SyncUiState.Echec(
+                    "Nirgescom a rangé cette session sous un autre dépôt que celui de la clé " +
+                        "d'API réglée sur la tablette : elle n'est pas consultable avec cette " +
+                        "clé. Appelez le service informatique si c'est inattendu.\n\n${r.detail}"
+                )
+                is ResultatEtat.IdentifiantInvalide -> SyncUiState.Echec(
+                    "Nirgescom ne reconnaît pas l'identifiant de cette session. Prévenez le " +
+                        "service informatique.\n\n${r.detail}"
+                )
+                is ResultatEtat.ConfigurationServeur -> SyncUiState.Echec(
+                    "Le serveur Nirgescom est mal configuré (clé d'API ou base de données côté " +
+                        "serveur). Ni le WiFi ni la tablette ne sont en cause : prévenez le " +
+                        "service informatique.\n\n${r.detail}"
+                )
                 is ResultatEtat.Indisponible -> SyncUiState.Echec(
                     "Nirgescom ne répond pas pour le moment. Réessayez dans quelques minutes." +
                         "\n\n${r.detail}"

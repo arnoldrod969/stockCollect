@@ -40,6 +40,20 @@ Points de contact avec le modèle actuel, à connaître avant de toucher aux ses
   Relire le réglage à l'envoi étiquetterait silencieusement la collecte sous le mauvais dépôt si la
   tablette a été reconfigurée entre-temps ; l'instantané fait au contraire échouer l'envoi en `403`.
   Les sessions antérieures gardent leur ancien texte libre et restent lisibles.
+- Les codes magasin sont les `siCode` Nirgescom — surtout numériques (`22020104`), pas tous
+  (`220301A1`) — et les libellés du type `DEPOT SUPER MARCHE PREVA`. L'app les traite comme des
+  textes opaques : ne rien supposer de leur longueur ni de leur alphabet.
+- Ce que veut dire chaque code HTTP est décidé dans `data/remote/ReponsesNirgescom.kt`, fonctions
+  pures testées en JVM (`ReponsesNirgescomTest`) ; `NirgescomClient` ne fait que les E/S et le
+  décodage `org.json`, qui n'est qu'un bouchon dans les tests unitaires. **`500` n'est pas
+  réessayable** : c'est une configuration serveur (clé sans `code_magasin` valide, vue absente,
+  `GRANT` incomplet), le message renvoie vers l'IT et non vers le WiFi ; seul `503` (base
+  injoignable) se réessaie. Le `403` « `session_id` appartenant déjà à un autre magasin » se
+  reconnaît au texte de `detail` et se distingue du `403` magasin.
+- `POST /documents` refuse en `422` plutôt que de nettoyer (le hash changerait). `SyncService`
+  rejoue ces contrôles **avant** l'envoi (`ValidationEnvoi`) pour nommer l'article fautif, sans
+  jamais retoucher une valeur. Les routes `GET` répondent `422` à tout paramètre de requête
+  inconnu : l'app n'en envoie aucun.
 - Le contrat n'accepte que `INVENTAIRE` et `COMMANDE`.
 - Le statut de synchro vit dans une colonne **séparée** de `statut` : une session peut être
   exportée en CSV *et* synchronisée, l'export restant un repli.
