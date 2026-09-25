@@ -1,10 +1,10 @@
 ---
 id: TASK-5
 title: 'Corriger les bugs de session et d''UI, retirer ENTREE et SORTIE'
-status: In Progress
+status: Done
 assignee: []
 created_date: '2026-09-17 15:53'
-updated_date: '2026-09-25 09:23'
+updated_date: '2026-09-25 10:10'
 labels: []
 dependencies: []
 ordinal: 9000
@@ -28,12 +28,12 @@ Enfin, le contrat API n'accepte que INVENTAIRE et COMMANDE : une session ENTREE 
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 observerLignes annule le Job précédent avant d'en relancer un
-- [ ] #2 creerSession ne reprend un brouillon que si son typeOperation correspond, sinon l'utilisateur choisit
-- [ ] #3 L'édition de quantité dans la liste ne peut plus committer sur la mauvaise ligne après recyclage
+- [x] #1 observerLignes annule le Job précédent avant d'en relancer un
+- [x] #2 creerSession ne reprend un brouillon que si son typeOperation correspond, sinon l'utilisateur choisit
+- [x] #3 L'édition de quantité dans la liste ne peut plus committer sur la mauvaise ligne après recyclage
 - [x] #4 Une saisie intermédiaire dans le champ quantité n'écrase plus la valeur par 0
 - [x] #5 ENTREE et SORTIE ne sont plus proposés à la création de session
-- [ ] #6 Les constantes TypeOperation.ENTREE et SORTIE sont conservées et les sessions existantes de ces types restent lisibles dans l'Historique
+- [x] #6 Les constantes TypeOperation.ENTREE et SORTIE sont conservées et les sessions existantes de ces types restent lisibles dans l'Historique
 - [x] #7 Aucune migration ni suppression des sessions ENTREE/SORTIE déjà en base
 <!-- AC:END -->
 
@@ -77,6 +77,8 @@ Cas C (DiffUtil pendant l edition) : champ ligne 10, taper 1000 sans valider ; +
 Cas D (ligne editee supprimee) : champ ligne 7, taper 777, X sur cette meme ligne. Attendu : ligne supprimee, 777 nulle part.
 Cas E : champ ligne 20, taper 2000, Cloturer. Attendu : recapitulatif ligne 20 = 2000.0.
 Controle (meme shell sqlite3) : SELECT code_produit, quantite FROM lignes_collecte WHERE id_session=(SELECT MAX(id_session) FROM sessions) ORDER BY date_saisie; -> quantite = rang, sauf 300/555/5/1000/2000 ; ex-lignes 2 et 7 absentes.
+
+Verification 2026-09-25 sur emulateur API 28. connectedDebugAndroidTest 16/16 : SaisieViewModelTest (6) prouve #1 (ancien collecteur muet apres changement de session, dernier chargement l'emporte) et #2 (brouillon d'un autre type non repris, BrouillonAutreType emis ; brouillon du meme type repris meme masque par un autre type plus recent) ; SessionsAnciensTypesTest prouve #6 (puces Entree/Sortie retrouvent ces sessions, une SORTIE cloturee s'exporte en CSV), TypeOperationTest (JVM) fige constantes et libelles. #3 par scenario manuel sur session de 40 lignes injectee : A (300 tape sur L3, defilement jusqu'en bas et retour -> L3=300), B (555 sur L5, defilement, OK -> L5=555), C (1000 sur L10, + sur L6, X sur L7, OK -> L10=1000, L6=7, L7 supprimee), D (999 sur L9 puis X sur L9 -> supprimee, 999 nulle part, OK sans effet sur la ligne qui recoit le focus), E (2000 sur L20 puis Cloturer -> 2000 en base). Base relue : seules P03/P05/P06/P10/P20 modifiees, P07/P09 absentes, nb_lignes=38, aucun crash. Piege du banc de test consigne : apres des touches clavier la fenetre sort du mode tactile et un premier tap ne donne pas toujours le focus ; il faut verifier le focus avant de taper. Correctifs de la revue integres (3ebca60) : ecriture decidee par la modification effective du champ (TextWatcher), plus par comparaison au texte arrondi. Commentaire #1 (cartes ENTREE/SORTIE) : tranche au Lot 4, une seule carte.
 <!-- SECTION:NOTES:END -->
 
 ## Comments
@@ -96,3 +98,9 @@ Je n'ai donc rien retiré : supprimer ces deux cartes effacerait un signal de ro
 Question : faut-il quand même retirer les deux cartes, ou ajuster les critères d'acceptation pour acter qu'il n'y a rien à faire ?
 ---
 <!-- COMMENTS:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+Bugs de session et d'UI corriges et prouves : un seul collecteur de lignes actif, course entre deux chargements de session eliminee, brouillon repris uniquement s'il est du type demande (sinon choix a l'utilisateur), saisie de quantite ecrite sur la bonne ligne apres recyclage, saisie intermediaire non ecrasee, sessions ENTREE/SORTIE toujours lisibles et exportables. Preuves : 6 tests instrumentes + tests JVM verts sur emulateur, scenario de recyclage A-E sur 40 lignes verifie en base.
+<!-- SECTION:FINAL_SUMMARY:END -->
