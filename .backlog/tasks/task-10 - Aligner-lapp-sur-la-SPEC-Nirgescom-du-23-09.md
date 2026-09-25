@@ -1,11 +1,11 @@
 ---
 id: TASK-10
 title: Aligner l'app sur la SPEC Nirgescom du 23/09
-status: In Progress
+status: Done
 assignee:
   - '@claude'
 created_date: '2026-09-25 09:11'
-updated_date: '2026-09-25 09:20'
+updated_date: '2026-09-25 09:37'
 labels: []
 dependencies:
   - TASK-8
@@ -22,13 +22,13 @@ La SPEC de nirgescom-api (docs/SPEC.md) a evolue du 18 au 23/09 (commits 4d88a16
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Un 500 est traite comme une erreur non reessayable, avec un message qui oriente vers la configuration du serveur et non vers le WiFi
-- [ ] #2 Le 403 de POST /documents pour un session_id deja rattache a un autre magasin est distingue du 403 magasin
-- [ ] #3 GET /documents/{session_id} gere 403 (session d'un autre magasin) et 422 (UUID invalide) avec un message propre
-- [ ] #4 Avant envoi, l'app refuse avec un message nommant la ligne : espaces en tete ou fin de code_produit/code_barre, emoji ou caractere de controle dans un texte, quantite > 999999.999 ou a plus de 3 decimales
-- [ ] #5 L'app n'envoie aucun parametre de requete inconnu sur les routes GET
-- [ ] #6 La correspondance statut HTTP vers resultat est couverte par des tests JVM, sans appel reseau reel
-- [ ] #7 La section Sync de CLAUDE.md reflete la SPEC du 23/09 (codes magasin numeriques, 500 non reessayable)
+- [x] #1 Un 500 est traite comme une erreur non reessayable, avec un message qui oriente vers la configuration du serveur et non vers le WiFi
+- [x] #2 Le 403 de POST /documents pour un session_id deja rattache a un autre magasin est distingue du 403 magasin
+- [x] #3 GET /documents/{session_id} gere 403 (session d'un autre magasin) et 422 (UUID invalide) avec un message propre
+- [x] #4 Avant envoi, l'app refuse avec un message nommant la ligne : espaces en tete ou fin de code_produit/code_barre, emoji ou caractere de controle dans un texte, quantite > 999999.999 ou a plus de 3 decimales
+- [x] #5 L'app n'envoie aucun parametre de requete inconnu sur les routes GET
+- [x] #6 La correspondance statut HTTP vers resultat est couverte par des tests JVM, sans appel reseau reel
+- [x] #7 La section Sync de CLAUDE.md reflete la SPEC du 23/09 (codes magasin numeriques, 500 non reessayable)
 <!-- AC:END -->
 
 ## Implementation Plan
@@ -59,4 +59,12 @@ Implementation (worktree agent, non commitee) :
 - CLAUDE.md section Sync mise a jour.
 Tests : ReponsesNirgescomTest (30), ValidationEnvoiTest (14), CsvParserTest (15) verts ; testDebugUnitTest + assembleDebug BUILD SUCCESSFUL.
 Constats hors zone : somme flottante des rescans (SessionRepository.ajouterLigne) peut produire 0.30000000000000004 -> desormais bloque avant envoi, mais la cause reste ; un nom catalogue avec tabulation (CSV separe par ;) serait bloque ; CsvParser.parseLigne trimme deja tous les champs, donc l'import ne laisse pas passer d'espaces autour des codes.
+
+Integration (commits 7bc9d2e, 3ebca60) : testDebugUnitTest 70/70 (ReponsesNirgescomTest 30, ValidationEnvoiTest 15), lintDebug et assembleRelease verts. Preuves : #1 #2 #3 par ReponsesNirgescomTest (classement 500 ConfigurationServeur, 403 session_id vs magasin vs num_document, GET 403/422/500) ; #4 par ValidationEnvoiTest ; #5 par le test de url() et la lecture des trois routes GET ; #6 idem, aucune dependance ni appel reseau ; #7 section Sync de CLAUDE.md relue. Revue independante : ajout du refus ENTREE/SORTIE et du plafond 5000 lignes avant envoi, U+0085 traite comme espace (strip() Python), marquerEchecSync ne degrade plus une session SYNCHRONISEE. Limite : aucun appel a l'API reelle (consigne utilisateur, elle ecrit dans jdbout2023), les messages n'ont pas ete vus a l'ecran ; le decodage org.json (lireDetail/lireRecapitulatif) n'est pas couvert en JVM.
 <!-- SECTION:NOTES:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+App alignee sur la SPEC Nirgescom du 23/09 : 500 non reessayable avec message 'configuration serveur', 403 session_id distingue, 403/422 geres sur GET /documents/{id}, validation avant envoi rejouant les regles 422 de l'API (espaces, emoji, controles, quantite, longueurs, type, 5000 lignes). Correspondance HTTP -> resultat extraite dans ReponsesNirgescom et couverte par 30 tests JVM ; 70/70 tests, lint et build release verts. Non verifie contre l'API reelle, par choix.
+<!-- SECTION:FINAL_SUMMARY:END -->
