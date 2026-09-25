@@ -25,7 +25,8 @@ import com.jdcosmetics.stockcollect.util.FormatUtils
 internal fun quantiteAEcrire(saisie: String?, quantiteEnBase: Double, modifiee: Boolean): Double? {
     if (!modifiee) return null
     val q = saisie?.trim().orEmpty().toDoubleOrNull() ?: return null
-    return q.takeIf { it >= 0 && it != quantiteEnBase }
+    // Normalisée comme elle sera écrite : 1.2345 tapé sur une ligne à 1.235 ne change rien.
+    return FormatUtils.normaliserQuantite(q).takeIf { it >= 0 && it != quantiteEnBase }
 }
 
 class LignesCollecteAdapter(

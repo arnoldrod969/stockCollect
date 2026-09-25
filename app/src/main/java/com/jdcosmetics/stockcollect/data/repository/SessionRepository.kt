@@ -8,6 +8,7 @@ import com.jdcosmetics.stockcollect.data.db.entity.LigneCollecteEntity
 import com.jdcosmetics.stockcollect.data.db.entity.SessionEntity
 import com.jdcosmetics.stockcollect.data.db.entity.StatutSession
 import com.jdcosmetics.stockcollect.util.DateUtils
+import com.jdcosmetics.stockcollect.util.FormatUtils
 import kotlinx.coroutines.flow.Flow
 import java.util.UUID
 import javax.inject.Inject
@@ -65,7 +66,9 @@ class SessionRepository @Inject constructor(
     ): Long {
         val ligneExistante = ligneDao.getLigneBySessionAndProduit(idSession, article.codeProduit)
         if (ligneExistante != null) {
-            val nouvelleQuantite = ligneExistante.quantite + quantite
+            // La somme de deux Double dérive (1.1 + 2.2 = 3.3000000000000003) : normalisée, sinon
+            // la session deviendrait inenvoyable après sa clôture.
+            val nouvelleQuantite = FormatUtils.normaliserQuantite(ligneExistante.quantite + quantite)
             ligneDao.update(ligneExistante.copy(quantite = nouvelleQuantite))
             return ligneExistante.idLigne
         }
@@ -74,7 +77,7 @@ class SessionRepository @Inject constructor(
             codeProduit = article.codeProduit,
             codeBarreScanne = codeBarreScanne,
             nomProduitSnap = article.nomProduit,
-            quantite = quantite,
+            quantite = FormatUtils.normaliserQuantite(quantite),
             dateSaisie = DateUtils.nowIso()
         )
         val id = ligneDao.insert(ligne)
@@ -83,8 +86,9 @@ class SessionRepository @Inject constructor(
         return id
     }
 
+    /** Saisie au clavier ou boutons ± de la liste : même normalisation que [ajouterLigne]. */
     suspend fun mettreAJourQuantite(ligne: LigneCollecteEntity, nouvelleQuantite: Double) {
-        ligneDao.update(ligne.copy(quantite = nouvelleQuantite))
+        ligneDao.update(ligne.copy(quantite = FormatUtils.normaliserQuantite(nouvelleQuantite)))
     }
 
     suspend fun supprimerLigne(ligne: LigneCollecteEntity) {

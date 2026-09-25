@@ -128,7 +128,7 @@ Easy to break, and not visible from any single file.
 - Correspondence columns: `0 = code_barre`, `1 = code_produit`. Requires ≥ 2, refuses to run while `articles` is empty, and does a full `deleteAll()` + reinsert.
 - Separator is auto-detected per file — `;` wins only on a strict majority over `,`. Encoding is UTF-8 with an ISO-8859-1 fallback.
 - An import aborts entirely if more than 10% of rows error (`Constants.IMPORT_SEUIL_ERREUR_POURCENTAGE`). A quantity or price that is present but not numeric is an **error**, not a silent `0.0`.
-- Export (`CsvExportService`): comma-separated, CRLF, UTF-8, header `Code Barre,Code Produit,Nom Produit,Quantité`. Commas inside product names are replaced with spaces rather than quoted.
+- Export (`CsvExportService`): comma-separated, CRLF, UTF-8, header `Code Barre,Code Produit,Nom Produit,Quantité`. Commas inside product names are replaced with spaces rather than quoted. Quantities are written by `formatQuantite`: integers as before (`12.0`), fractional ones with up to 3 decimals (`1.25`, formerly rounded to `1.3`) — the third-party consumer must accept a variable number of decimals.
   - **No UTF-8 BOM, deliberately.** The file is consumed by a third-party system that does not tolerate it. Excel on Windows will therefore show accented names and the `Quantité` header as mojibake — that is expected, not a bug to fix. Do not reintroduce a BOM.
   - The flat, unquoted format is likewise assumed: no product name in the catalogue contains a `"`.
 - Filename comes from `DateUtils.toFileName()` → `STOCK_ddMMyyyy_HHmm.csv`, written to a user-chosen SAF URI.
@@ -141,7 +141,8 @@ Domain and UI identifiers are **French** (`resoudre`, `ajouterLigne`, `cloturer`
 A lot of user-facing text is **hardcoded French literals in Kotlin** rather than in `strings.xml` — dialog titles and messages, statut labels, Snackbar text, and the nav_graph labels. Match whichever the file you're editing already does.
 
 - Statuses and types are `object StatutSession` / `object TypeOperation` string constants in `data/db/entity/SessionEntity.kt`, **not enums**. `TypeOperation.label()` gives the display string.
-- Formatting lives in `util/DateUtils.kt`, which holds two objects: `DateUtils` (`nowIso`, `toDisplay`, `toFileName`) and `FormatUtils` (`formatQuantite` → one decimal in `Locale.US`, `formatPrix` → FCFA).
+- Formatting lives in `util/DateUtils.kt`, which holds two objects: `DateUtils` (`nowIso`, `toDisplay`, `toFileName`) and `FormatUtils` (`formatQuantite` → at least 1 and at most 3 decimals, `12.0` / `1.25`, used on screen **and** in the CSV export; `normaliserQuantite`; `formatPrix` → FCFA).
+- **Every quantity written to `lignes_collecte` goes through `FormatUtils.normaliserQuantite`** (3 decimals, in `SessionRepository`). Summed `Double`s drift (`1.1 + 2.2` = `3.3000000000000003`), the API refuses more than 3 decimals with a 422, and a closed session can no longer be corrected — so the drift must never reach the database. Screen, CSV and Nirgescom thus carry the same value.
 
 ## Changing the database schema
 

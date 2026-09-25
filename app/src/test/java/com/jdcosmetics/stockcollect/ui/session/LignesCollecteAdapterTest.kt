@@ -31,8 +31,9 @@ class LignesCollecteAdapterTest {
 
     @Test
     fun `le simple passage du focus ne reecrit pas une quantite arrondie a l affichage`() {
-        // 1.25 s'affiche « 1.3 » : relire ce texte sans l'avoir touché ne remplace rien.
-        assertNull(quantiteAEcrire("1.3", 1.25, modifiee = false))
+        // Une valeur ancienne 1.2999999999999998 s'affiche « 1.3 » : relire ce texte sans l'avoir
+        // touché ne remplace rien.
+        assertNull(quantiteAEcrire("1.3", 2.3 - 1, modifiee = false))
     }
 
     @Test
@@ -40,6 +41,13 @@ class LignesCollecteAdapterTest {
         // 2.3 puis « − » donne 1.2999999999999998, affiché « 1.3 » : le retaper doit l'écrire,
         // sinon la ligne reste non envoyable (plus de 3 décimales) après la clôture.
         assertEquals(1.3, quantiteAEcrire("1.3", 2.3 - 1, modifiee = true)!!, 0.0)
+    }
+
+    @Test
+    fun `une saisie a plus de 3 decimales est ecrite arrondie`() {
+        assertEquals(1.235, quantiteAEcrire("1.2345", 2.0, modifiee = true)!!, 0.0)
+        // Arrondie, elle égale la valeur en base : rien à écrire.
+        assertNull(quantiteAEcrire("1.2345", 1.235, modifiee = true))
     }
 
     @Test
