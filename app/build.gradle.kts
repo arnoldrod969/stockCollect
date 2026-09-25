@@ -14,8 +14,8 @@ android {
         applicationId = "com.jdcosmetics.stockcollect"
         minSdk = 26          // Android 8.0 Oreo
         targetSdk = 34
-        versionCode = 1
-        versionName = "1.0.0"
+        versionCode = 2         // > V1 (branche v1-original) : Android refuse de reinstaller la V1 par-dessus
+        versionName = "2.0.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 

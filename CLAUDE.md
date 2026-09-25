@@ -141,7 +141,7 @@ The original offline app, before any lot and without the WiFi sync, is preserved
 
 - Never merge `master` or this branch into `v1-original`. A V1 hotfix goes on a branch cut from it (`git switch -c v1-correctif v1-original`).
 - To build it: `git switch v1-original` (or `git worktree add ../stockCollect-v1 v1-original`), then `./gradlew :app:assembleDebug`. Its `assembleRelease` fails — `proguard-rules.pro` is missing there.
-- **Reinstalling V1 over V2 on a tablet wipes the data, silently.** Both share `applicationId` and `versionCode = 1`, so Android does not refuse the install; V1 then finds a version-3 database, and its `fallbackToDestructiveMigration()` also covers downgrades — the base is recreated empty. Export (or sync) every session to keep first, then reimport the catalogue. V1 → V2 is safe (migrations 1→2→3). Bumping `versionCode` in V2 would make Android refuse the downgrade instead.
+- **V2 is `versionCode = 2`, V1 is `1`, on purpose — keep V2's strictly above.** Both share the same `applicationId`; with equal codes Android accepted V1 over V2 without a word, and V1 — finding a version-3 database, with `fallbackToDestructiveMigration()` covering downgrades too — recreated it empty. Android now refuses the downgrade. It can still be forced (`adb install -r -d` on a debug build, or uninstalling first), and both wipe the data: export (or sync) every session to keep first, then reimport the catalogue. V1 → V2 is safe (migrations 1→2→3).
 
 <!-- BACKLOG.MD GUIDELINES START -->
 <!-- backlog.md-instructions-version: 1.48.0 -->
