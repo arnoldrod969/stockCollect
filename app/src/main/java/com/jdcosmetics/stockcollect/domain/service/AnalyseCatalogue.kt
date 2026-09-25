@@ -30,6 +30,27 @@ data class ConflitCodeBarre(
 }
 
 /**
+ * Un code-barre secondaire (`art_codebarre`) retiré à l'import du catalogue, parce que le catalogue
+ * le donne comme code principal à un **autre** article.
+ *
+ * Règle de priorité (TASK-11) : **le catalogue l'emporte sur la correspondance**. Il n'y a donc rien
+ * à choisir ; l'utilisateur est seulement informé de ce qui a été retiré, et de quel article.
+ * Sans ce retrait, le code désignerait deux articles et le rattachement secondaire serait mort,
+ * `BarcodeScanService.resoudre()` interrogeant `articles` en premier.
+ */
+data class CorrespondanceRetiree(
+    val codeBarre: String,
+    /** L'article auquel `art_codebarre` rattachait le code, et qui le perd. */
+    val codeProduitRetire: String,
+    /** L'article qui porte désormais le code comme code principal. */
+    val codeProduitCatalogue: String
+) {
+    fun libelle(): String =
+        "Code-barres $codeBarre retiré de l'article $codeProduitRetire : le catalogue " +
+            "le donne à $codeProduitCatalogue"
+}
+
+/**
  * Photographie du fichier avant écriture. **Rien n'a encore touché la base** : c'est ce qui permet
  * de proposer un choix à l'utilisateur, et accessoirement ce qui rend l'import atomique — il n'y a
  * plus de fenêtre où la moitié du catalogue serait chargée.
@@ -41,7 +62,12 @@ data class AnalyseCatalogue(
     /** Lignes dont les colonnes ont été recollées (virgule non échappée dans le nom). */
     val lignesRecollees: List<String>,
     val erreurs: List<String>,
-    val totalLignes: Int
+    val totalLignes: Int,
+    /**
+     * Correspondances secondaires que l'écriture retirera (le catalogue l'emporte). Calculées ici
+     * pour être annoncées ; `appliquerCatalogue` les recalcule dans sa transaction.
+     */
+    val correspondancesRetirees: List<CorrespondanceRetiree> = emptyList()
 ) {
     val nbFichesDupliquees: Int get() = conflits.count { it.memeProduit }
     val nbVraisConflits: Int get() = conflits.count { !it.memeProduit }
@@ -60,6 +86,22 @@ data class AnalyseCatalogue(
         if (nbVraisConflits > 0) {
             append("• $nbVraisConflits conflits réels : deux articles différents partagent ")
             append("un code-barre. À corriger dans Nirgescom.\n")
+        }
+    }
+
+    /**
+     * Paragraphe d'information pour le dialogue d'arbitrage, `null` s'il n'y a rien à retirer.
+     * Ce n'est pas un choix : la règle est fixée, le catalogue l'emporte.
+     */
+    fun resumeCorrespondancesRetirees(): String? {
+        if (correspondancesRetirees.isEmpty()) return null
+        val n = correspondancesRetirees.size
+        return if (n == 1) {
+            "Par ailleurs, 1 code-barres secondaire sera retiré, le catalogue le donnant à un " +
+                "autre article :\n${correspondancesRetirees.single().libelle()}."
+        } else {
+            "Par ailleurs, $n codes-barres secondaires seront retirés, le catalogue les donnant " +
+                "à d'autres articles (détail dans le rapport d'import)."
         }
     }
 

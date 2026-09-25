@@ -129,6 +129,44 @@ class CorrespondanceCodeBarreTest {
     }
 
     @Test
+    fun caractereDeControleDansLeCodeBarre_ligneRejetee() = runBlocking {
+        // TASK-15 : une tabulation interne passerait l'import puis bloquerait l'envoi.
+        val uri = fichierCsv(*lignesSaines(), "SEC\t10,P10")
+
+        val resultat = service.importCorrespondance(uri)
+
+        assertTrue(resultat.success)
+        assertEquals(9, resultat.nbImportes)
+        val erreur = resultat.erreurs.single()
+        assertTrue(erreur, erreur.startsWith("Ligne 10 : le code-barres contient un caractère de contrôle"))
+        assertNull(db.artCodebarreDao().findByCodeBarre("SEC\t10"))
+    }
+
+    @Test
+    fun emojiDansLeCodeProduit_ligneRejetee() = runBlocking {
+        val uri = fichierCsv(*lignesSaines(), "SEC10,P10😀")
+
+        val resultat = service.importCorrespondance(uri)
+
+        assertTrue(resultat.success)
+        val erreur = resultat.erreurs.single()
+        assertTrue(erreur, erreur.startsWith("Ligne 10 : le code produit contient un emoji"))
+    }
+
+    @Test
+    fun couplesDecodes_memesControlesQueLeCsv() = runBlocking {
+        val couples = (1..9).map { i -> "SEC$i" to "P%02d".format(i) } + ("CB01" to "P02")
+
+        val resultat = service.importCorrespondance(couples)
+
+        assertTrue(resultat.success)
+        assertEquals(9, resultat.nbImportes)
+        assertTrue(resultat.erreurs.single().startsWith("Ligne 10 : le code-barre « CB01 »"))
+        assertFalse(service.importCorrespondance(emptyList()).success)
+        assertEquals("Une liste vide ne vide pas la table", 9, db.artCodebarreDao().count())
+    }
+
+    @Test
     fun auDelaDuSeuilDe10Pourcent_importRefuseEtTableInchangee() = runBlocking {
         // Une correspondance déjà en base, issue d'un import précédent.
         db.artCodebarreDao().insertOrReplace(

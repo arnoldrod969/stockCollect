@@ -203,6 +203,12 @@ class ImportCatalogueFragment : Fragment() {
                     append("listé(s) dans le rapport d'import.")
                 }
             }
+            // Information seulement, pas une question : la règle est fixée, le catalogue
+            // l'emporte sur la correspondance quel que soit le bouton choisi (TASK-11).
+            analyse.resumeCorrespondancesRetirees()?.let {
+                append("\n\n")
+                append(it)
+            }
             append("\n\nQue faire ?")
         }
 
