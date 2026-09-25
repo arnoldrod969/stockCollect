@@ -5,7 +5,7 @@ status: In Progress
 assignee:
   - '@claude'
 created_date: '2026-09-25 10:49'
-updated_date: '2026-09-25 11:24'
+updated_date: '2026-09-25 11:44'
 labels: []
 dependencies:
   - TASK-11
@@ -23,12 +23,12 @@ Aujourd'hui le catalogue et la table de correspondance art_codebarre ne viennent
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Depuis l'ecran d'import, l'utilisateur peut mettre a jour le catalogue depuis l'API (GET /catalog), avec ETag : un 304 est un succes sans reecriture
-- [ ] #2 Le catalogue recu de l'API passe par la meme analyse et le meme arbitrage des conflits de codes-barres que l'import CSV, avant toute ecriture
+- [x] #1 Depuis l'ecran d'import, l'utilisateur peut mettre a jour le catalogue depuis l'API (GET /catalog), avec ETag : un 304 est un succes sans reecriture
+- [x] #2 Le catalogue recu de l'API passe par la meme analyse et le meme arbitrage des conflits de codes-barres que l'import CSV, avant toute ecriture
 - [ ] #3 L'utilisateur peut mettre a jour les codes-barres secondaires depuis l'API (GET /codes-barres), avec les memes controles que l'import CSV de correspondance (regle un code-barre = un article)
-- [ ] #4 Une reponse vide de GET /codes-barres n'efface pas la correspondance existante ; l'utilisateur est informe
-- [ ] #5 Les imports CSV restent disponibles et inchanges pour un usage hors ligne
-- [ ] #6 Les erreurs reseau et HTTP (401, 403, 500, 503) ont un message propre, sur le modele de ReponsesNirgescom, couvert par des tests JVM sans appel reseau reel
+- [x] #4 Une reponse vide de GET /codes-barres n'efface pas la correspondance existante ; l'utilisateur est informe
+- [x] #5 Les imports CSV restent disponibles et inchanges pour un usage hors ligne
+- [x] #6 Les erreurs reseau et HTTP (401, 403, 500, 503) ont un message propre, sur le modele de ReponsesNirgescom, couvert par des tests JVM sans appel reseau reel
 <!-- AC:END -->
 
 ## Implementation Plan
@@ -55,4 +55,7 @@ Constats et decisions (implementation) :
 - ETag : enregistre seulement apres ecriture reussie (arbitrage annule = pas d'ETag), rejoue seulement si la table locale n'est pas vide, efface par un import CSV (catalogue -> les deux ETag, codes-barres -> le sien) et toute ecriture du catalogue efface celui des codes-barres. Liste de codes-barres vide : aucun ETag retenu, l'information est redonnee a chaque fois.
 - Decodage des 200 en flux (android.util.JsonReader), coupure reseau en cours de lecture = injoignable, JSON malforme = reponse illisible. Delai de lecture 60 s pour ces deux routes.
 - 403 n'est pas renvoye par /catalog ni /codes-barres aujourd'hui (401, 422, 500, 503 seulement) ; gere quand meme (NonAutorise).
+
+Revue : ajout d'un seul import a la fois sur l'ecran (ImportCatalogueViewModel.importEnCours) contre un ETag de codes-barres perime apres deux imports concurrents ; ETag du catalogue efface apres un arbitrage 'Ignorer' avec conflits (test catalogue_conflitImporteSansCodeBarre_etagEnregistre et assertion ajoutee). Emulateur : boutons Nirgescom masques et message vers Parametres quand rien n'est regle. Verification 25/09 : testDebugUnitTest, lintDebug et assembleRelease OK ; connectedDebugAndroidTest 67/67 sur emulateur (127.0.0.1:21503).
+AC3 laisse ouvert : l'ecart 'codes-barres d'articles hors depot ecartes au lieu d'etre des erreurs' (source API seulement) attend la validation de l'utilisateur.
 <!-- SECTION:NOTES:END -->

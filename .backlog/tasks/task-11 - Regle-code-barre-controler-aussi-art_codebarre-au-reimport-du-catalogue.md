@@ -1,11 +1,11 @@
 ---
 id: TASK-11
 title: 'Regle code-barre : controler aussi art_codebarre au reimport du catalogue'
-status: In Progress
+status: Done
 assignee:
   - '@claude'
 created_date: '2026-09-25 09:36'
-updated_date: '2026-09-25 10:57'
+updated_date: '2026-09-25 11:43'
 labels: []
 dependencies:
   - TASK-3
@@ -20,10 +20,10 @@ Le controle 'un code-barre = un article' (TASK-3 #7) ne fonctionne que dans un s
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 La regle de priorite entre catalogue et correspondance est decidee et consignee
-- [ ] #2 analyserCatalogue detecte les codes principaux entrants deja presents dans art_codebarre pour un autre article, avant toute ecriture
-- [ ] #3 Le conflit est presente a l'utilisateur, dans le dialogue d'arbitrage existant ou equivalent
-- [ ] #4 Un test Room en memoire couvre ce sens du controle
+- [x] #1 La regle de priorite entre catalogue et correspondance est decidee et consignee
+- [x] #2 analyserCatalogue detecte les codes principaux entrants deja presents dans art_codebarre pour un autre article, avant toute ecriture
+- [x] #3 Le conflit est presente a l'utilisateur, dans le dialogue d'arbitrage existant ou equivalent
+- [x] #4 Un test Room en memoire couvre ce sens du controle
 <!-- AC:END -->
 
 ## Implementation Plan
@@ -44,4 +44,12 @@ Regle de priorite decidee par l'utilisateur (2026-09-25) : LE CATALOGUE L'EMPORT
 Implementation : ArtCodebarreDao.getAll / supprimerCodesBarres ; AnalyseCatalogue.correspondancesRetirees (CorrespondanceRetiree : code-barre, article qui le perd, article du catalogue) calculee par analyserCatalogue en lecture seule ; appliquerCatalogue la recalcule dans sa transaction (etat de la base au moment de l'ecriture) et supprime les correspondances avant d'ecrire les articles. Le porteur retenu est le premier article du fichier (gagnant de l'arbitrage), donc le retrait ne depend pas de la resolution choisie. Un code rattache au meme article dans les deux tables reste (redondant, inoffensif).
 Information : paragraphe dans le dialogue d'arbitrage (resumeCorrespondancesRetirees) ; ImportResult.nbCorrespondancesRetirees + ligne du resume + detail en tete de la liste 'Details' du compte-rendu.
 Regle consignee dans CLAUDE.md (Domain model). Tests : ImportCatalogueTest (androidTest), 2 cas TASK-11 — non executes ici (pas d'emulateur).
+
+Regle consignee dans CLAUDE.md (le catalogue l'emporte sur art_codebarre). Tests ImportCatalogueTest. Verification 25/09 : testDebugUnitTest, lintDebug et assembleRelease OK ; connectedDebugAndroidTest 67/67 sur emulateur (127.0.0.1:21503).
 <!-- SECTION:NOTES:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+Un code principal entrant rattache dans art_codebarre a un autre article est signale a l'analyse puis retire dans la transaction d'ecriture ; l'utilisateur en est informe. Verifie par ImportCatalogueTest (Room en memoire).
+<!-- SECTION:FINAL_SUMMARY:END -->

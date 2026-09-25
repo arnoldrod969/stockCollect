@@ -1,10 +1,10 @@
 ---
 id: TASK-7
 title: 'Hygiène : permissions inutiles, sauvegarde, tests'
-status: To Do
+status: Done
 assignee: []
 created_date: '2026-09-17 15:53'
-updated_date: '2026-09-25 11:04'
+updated_date: '2026-09-25 11:43'
 labels: []
 dependencies: []
 ordinal: 7000
@@ -24,8 +24,8 @@ La couverture de test se limite à CsvParserTest.
 <!-- AC:BEGIN -->
 - [x] #1 READ_EXTERNAL_STORAGE et READ_MEDIA_IMAGES sont retirés du manifeste et l'import CSV fonctionne toujours
 - [x] #2 allowBackup est à false ou des dataExtractionRules excluent la base
-- [ ] #3 CsvImportService est couvert par des tests sur base Room in-memory
-- [ ] #4 BarcodeScanService est couvert, résolution directe et via art_codebarre
+- [x] #3 CsvImportService est couvert par des tests sur base Room in-memory
+- [x] #4 BarcodeScanService est couvert, résolution directe et via art_codebarre
 <!-- AC:END -->
 
 ## Implementation Notes
@@ -52,4 +52,13 @@ Reste a trancher avec l'utilisateur, hors de ce lot :
 
 AC4 : test instrumente app/src/androidTest/.../domain/service/BarcodeScanServiceTest.kt (resolution directe, via art_codebarre viaTableCB=true, secondaire d'un article ayant un principal, NonTrouve, trim). Compile, pas encore execute sur appareil. Aucun bug trouve dans BarcodeScanService.
 item_session_export.xml supprime : aucune reference (ItemSessionExportBinding / item_session_export) dans app/src.
+
+AC3 : ImportCatalogueTest et CorrespondanceCodeBarreTest (Room en memoire). AC4 : BarcodeScanServiceTest, execute. Verification 25/09 : testDebugUnitTest, lintDebug et assembleRelease OK ; connectedDebugAndroidTest 67/67 sur emulateur (127.0.0.1:21503).
+Points UI tranches avec l'utilisateur : une couleur par statut (ui/PastilleStatut.kt, Historique et Detail) ; bandeau d'accueil retire (verifie a l'emulateur, arbre uiautomator) ; mode sombre refuse, l'app reste en clair ; item_session_export.xml supprime. Couleurs des pastilles non verifiables a l'ecran : les captures de l'emulateur sortent blanches.
 <!-- SECTION:NOTES:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+Manifeste sans permissions de stockage, allowBackup=false, tests Room de CsvImportService et BarcodeScanService, pastille coloree par statut, bandeau d'accueil retire. Verifie par les tests instrumentes (67/67) et l'arbre UI a l'emulateur.
+<!-- SECTION:FINAL_SUMMARY:END -->

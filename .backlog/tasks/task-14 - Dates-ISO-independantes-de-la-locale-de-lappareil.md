@@ -1,11 +1,11 @@
 ---
 id: TASK-14
 title: Dates ISO independantes de la locale de l'appareil
-status: In Progress
+status: Done
 assignee:
   - '@claude'
 created_date: '2026-09-25 09:36'
-updated_date: '2026-09-25 11:04'
+updated_date: '2026-09-25 11:44'
 labels: []
 dependencies: []
 ordinal: 15000
@@ -19,8 +19,8 @@ DateUtils.nowIso (et isoFormat) utilise un SimpleDateFormat partage, non thread-
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Les dates ISO sont produites avec Locale.US (ou ROOT) et un formateur thread-safe
-- [ ] #2 Un test fixe le format produit sous une locale a chiffres non latins (ex. ar)
+- [x] #1 Les dates ISO sont produites avec Locale.US (ou ROOT) et un formateur thread-safe
+- [x] #2 Un test fixe le format produit sous une locale a chiffres non latins (ex. ar)
 <!-- AC:END -->
 
 ## Implementation Plan
@@ -39,4 +39,12 @@ DateUtils : DateTimeFormatter immuables ; ISO et nom de fichier en Locale.US, af
 Appelants verifies : nowIso (SessionRepository x3, SyncService x2 dont date_heure_cloture, CsvExportService, CsvImportService x2, ParametresViewModel), toFileName (CsvExportService, ExportViewModel), toDisplay/toDisplayDate (DetailSession, Export, Historique, Home, ImportCatalogue, Recapitulatif). Aucune autre relecture de date stockee dans le code.
 Test JVM app/src/test/.../util/DateUtilsTest.kt (7 tests, 0 ignore, 0 echec) sous ar-EG : temoin prouvant que l'ancien SimpleDateFormat sortait des chiffres arabo-indiens sur ce JVM, nowIso ASCII, format ISO et nom de fichier fixes, relecture, concurrence 8 threads.
 Limite : une date deja ecrite en chiffres non latins sur une tablette (avant correctif) ne se relit plus et s'affiche brute ; elle reste invalide pour l'API.
+
+DateUtilsTest (locale ar). Verification 25/09 : testDebugUnitTest, lintDebug et assembleRelease OK ; connectedDebugAndroidTest 67/67 sur emulateur (127.0.0.1:21503).
 <!-- SECTION:NOTES:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+Dates ISO et nom de fichier en java.time + Locale.US, thread-safe ; DateUtilsTest fige le format sous une locale a chiffres arabes.
+<!-- SECTION:FINAL_SUMMARY:END -->

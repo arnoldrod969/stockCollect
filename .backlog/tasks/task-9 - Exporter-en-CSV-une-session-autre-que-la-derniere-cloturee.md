@@ -1,11 +1,11 @@
 ---
 id: TASK-9
 title: Exporter en CSV une session autre que la derniere cloturee
-status: In Progress
+status: Done
 assignee:
   - '@claude'
 created_date: '2026-09-18 17:01'
-updated_date: '2026-09-25 11:06'
+updated_date: '2026-09-25 11:43'
 labels: []
 dependencies: []
 type: feature
@@ -26,9 +26,9 @@ Piste : passer un idSession en argument Safe Args a la destination Export, et ou
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Une session CLOTUREE ou EXPORTEE quelconque peut etre exportee depuis l'Historique ou le Detail session
-- [ ] #2 L'ecran Export affiche la session demandee et non systematiquement la plus recente
-- [ ] #3 L'export d'une session deja EXPORTEE reste possible (reecriture d'un fichier perdu)
+- [x] #1 Une session CLOTUREE ou EXPORTEE quelconque peut etre exportee depuis l'Historique ou le Detail session
+- [x] #2 L'ecran Export affiche la session demandee et non systematiquement la plus recente
+- [x] #3 L'export d'une session deja EXPORTEE reste possible (reecriture d'un fichier perdu)
 <!-- AC:END -->
 
 ## Implementation Plan
@@ -50,4 +50,12 @@ Fait : regle pure estExportable(statut) dans CsvExportService.kt (CLOTUREE/EXPOR
 Tests : EstExportableTest (JVM), ExportSessionDesigneeTest (instrumente, Room en memoire, service + ViewModel).
 
 Verification : ./gradlew :app:testDebugUnitTest :app:assembleDebugAndroidTest :app:lintDebug -> BUILD SUCCESSFUL (lint : seul ajout, un HardcodedText sur le nouveau bouton du Detail, comme le reste du fichier). Tests instrumentes non executes (pas d'emulateur) : ./gradlew :app:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.jdcosmetics.stockcollect.ui.export.ExportSessionDesigneeTest. Criteres non coches : a verifier sur emulateur.
+
+Emulateur : Historique -> Exporter sur une session CLOTUREE du 20/09 affiche cette session (2 lignes) et non la plus recente (24/09) ; pas de bouton sur le brouillon. Detail d'une session EXPORTEE -> Exporter : ecran Export sur cette session, bouton 'Generer a nouveau le fichier'. Double tap sur Exporter : plus de plantage (garde sur la destination courante, ajoutee apres revue). Tests EstExportableTest et ExportSessionDesigneeTest. Verification 25/09 : testDebugUnitTest, lintDebug et assembleRelease OK ; connectedDebugAndroidTest 67/67 sur emulateur (127.0.0.1:21503).
 <!-- SECTION:NOTES:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+Export de n'importe quelle session cloturee ou exportee depuis l'Historique ou le Detail, via idSession en argument (-1 = la plus recente). Verifie a l'emulateur et par EstExportableTest / ExportSessionDesigneeTest.
+<!-- SECTION:FINAL_SUMMARY:END -->

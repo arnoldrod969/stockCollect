@@ -1,11 +1,11 @@
 ---
 id: TASK-13
 title: 'DetailSessionViewModel : un seul collecteur par session'
-status: In Progress
+status: Done
 assignee:
   - '@claude'
 created_date: '2026-09-25 09:36'
-updated_date: '2026-09-25 11:04'
+updated_date: '2026-09-25 11:44'
 labels: []
 dependencies: []
 ordinal: 14000
@@ -19,8 +19,8 @@ DetailSessionViewModel.charger lance un nouveau collecteur sur le Flow Room a ch
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 charger annule le Job precedent avant d'en relancer un, ou ne relance rien pour la meme session
-- [ ] #2 Un test montre qu'apres deux appels un seul collecteur publie
+- [x] #1 charger annule le Job precedent avant d'en relancer un, ou ne relance rien pour la meme session
+- [x] #2 Un test montre qu'apres deux appels un seul collecteur publie
 <!-- AC:END -->
 
 ## Implementation Plan
@@ -34,4 +34,12 @@ DetailSessionViewModel.charger lance un nouveau collecteur sur le Flow Room a ch
 
 <!-- SECTION:NOTES:BEGIN -->
 charger annule lignesJob avant de relancer le collecteur (DetailSessionViewModel). Test instrumente app/src/androidTest/.../ui/detail/DetailSessionViewModelTest.kt : DAO enveloppe comptant collecteurs actifs et emetteurs ; apres deux charger, 1 actif et seul le 2e publie apres une ecriture. Compile (assembleDebugAndroidTest OK) ; pas encore execute sur appareil : ./gradlew :app:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.jdcosmetics.stockcollect.ui.detail.DetailSessionViewModelTest
+
+DetailSessionViewModelTest execute. Verification 25/09 : testDebugUnitTest, lintDebug et assembleRelease OK ; connectedDebugAndroidTest 67/67 sur emulateur (127.0.0.1:21503).
 <!-- SECTION:NOTES:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+charger() annule le collecteur precedent ; DetailSessionViewModelTest montre qu'un seul publie apres deux appels.
+<!-- SECTION:FINAL_SUMMARY:END -->
