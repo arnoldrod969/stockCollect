@@ -4,7 +4,7 @@ title: 'Corriger les bugs de session et d''UI, retirer ENTREE et SORTIE'
 status: In Progress
 assignee: []
 created_date: '2026-09-17 15:53'
-updated_date: '2026-09-17 17:53'
+updated_date: '2026-09-25 09:23'
 labels: []
 dependencies: []
 ordinal: 9000
@@ -51,6 +51,32 @@ Non coches, faute de preuve objective :
 - AC1 et AC2 : correction ecrite mais non exercee. Avec un seul type creable, produire un conflit de type sur reprise de brouillon demande de fabriquer une session ENTREE a la main en base.
 - AC3 : pas de fuite constatee entre lignes, mais avec 3 lignes le RecyclerView ne recycle pas — le scenario de recyclage reste a exercer sur une session longue.
 - AC6 : constantes et libelles conserves, mais aucune session ENTREE/SORTIE n existe sur l appareil pour le prouver a l ecran.
+
+Passe de preuve AC1/2/3/6 (2026-09-25, worktree agent, non commite) :
+
+AC1 - observerLignes : le cancel du Job tenait. Faille trouvee et corrigee : chargerSessionExistante appelait observerLignes APRES une suspension (getById) ; deux appels rapproches relancaient le collecteur dans l ordre de retour des lectures, A pouvait l emporter sur B. observerLignes est desormais appele avant la lecture, et chargerSession ignore une lecture revenue apres changement de session. Preuve : androidTest ui/session/SaisieViewModelTest (changerDeSession_lAncienCollecteurNePubliePlus, deuxChargementsRapproches_leDernierLEmporte).
+
+AC2 - bug reel corrige : getLastBrouillon renvoie le plus recent tous types confondus, un brouillon ENTREE plus recent masquait un brouillon INVENTAIRE en cours. Nouvelle requete SessionDao.getLastBrouillonDuType (lecture seule, aucun changement de schema) ; creerSession reprend d abord le brouillon du type demande, sinon emet BrouillonAutreType. Second defaut corrige : fermer le dialogue par Retour ou tap exterieur laissait BrouillonAutreType dans le ViewModel partage, le dialogue ressurgissait a la reouverture de Nouvelle Session (setOnCancelListener -> resetState). Preuve : SaisieViewModelTest (4 cas : autre type seul, meme type masque par un autre type plus recent, aucun brouillon, reprendreBrouillon). Limite UX non traitee : un vieux brouillon ENTREE bloque la creation d un inventaire tant qu il n est pas repris et cloture.
+
+AC3 - analyse : relecture par adapterPosition coherente avec currentList (AsyncListDiffer met a jour la liste avant de dispatcher) ; au recyclage par defilement la perte de focus survient avant resetInternal, donc sur la bonne ligne ; ligne supprimee -> NO_POSITION -> rien ecrit. Bug annexe corrige : le champ affiche une decimale, 1.25 etait reecrit 1.3 au simple passage du focus -> fonction pure quantiteAEcrire, test JVM LignesCollecteAdapterTest. Recyclage a prouver sur emulateur, scenario ci-dessous.
+
+AC6 - preuve : test JVM TypeOperationTest ; androidTest ui/historique/SessionsAnciensTypesTest (puces ENTREE/SORTIE/INVENTAIRE/Tous via HistoriqueViewModel.filtrer, libelles, bouton Exporter pour une SORTIE cloturee, export CSV d une SORTIE cloturee : contenu exact + statut EXPORTEE). HistoriqueFragment passe maintenant les constantes TypeOperation aux puces.
+
+Hors perimetre, signale : SyncService envoie type_operation tel quel, une session ENTREE/SORTIE partirait en 422 ; DetailSessionViewModel.charger empile un collecteur a chaque onViewCreated (meme defaut que AC1).
+
+Build : ./gradlew :app:testDebugUnitTest :app:assembleDebugAndroidTest -> BUILD SUCCESSFUL, 24 tests JVM verts. Tests instrumentes compiles, NON executes : ./gradlew :app:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.jdcosmetics.stockcollect.ui.session.SaisieViewModelTest,com.jdcosmetics.stockcollect.ui.historique.SessionsAnciensTypesTest
+
+SCENARIO EMULATEUR AC3 (image Google APIs, API 28, app debug) :
+Preparation : importer catalogue17022025.csv ; Nouvelle Session -> Commencer la saisie sans ajouter de ligne, revenir a l accueil. Puis adb shell am force-stop com.jdcosmetics.stockcollect.debug, puis dans adb shell : run-as com.jdcosmetics.stockcollect.debug, puis sqlite3 databases/stockcollect.db, et coller :
+  INSERT INTO lignes_collecte (id_session, code_produit, code_barre_scanne, nom_produit_snap, quantite, date_saisie) SELECT s.id, a.code_produit, NULL, a.nom_produit, (SELECT COUNT(*) FROM articles b WHERE b.code_produit <= a.code_produit), printf('2026-09-25T10:00:%02d', (SELECT COUNT(*) FROM articles b WHERE b.code_produit <= a.code_produit)) FROM articles a, (SELECT MAX(id_session) AS id FROM sessions WHERE statut='BROUILLON') s ORDER BY a.code_produit LIMIT 40;
+  UPDATE sessions SET nb_lignes = (SELECT COUNT(*) FROM lignes_collecte l WHERE l.id_session = sessions.id_session) WHERE statut='BROUILLON';
+Relancer, Historique -> le brouillon -> Saisie : 40 lignes, la ligne n affiche n.0.
+Cas A (perte de focus par recyclage) : champ ligne 3, taper 300 sans valider, defiler jusqu a la ligne 40 puis revenir. Attendu : ligne 3 = 300.0, aucune autre a 300.
+Cas B (actionDone apres defilement) : champ ligne 5, taper 555, defiler en gardant la ligne 5 visible, touche OK du clavier. Attendu : ligne 5 = 555.0 seule.
+Cas C (DiffUtil pendant l edition) : champ ligne 10, taper 1000 sans valider ; + sur la ligne 4 puis X sur la ligne 2 ; puis OK clavier. Attendu : ligne 4 = 5.0, ligne 2 supprimee, produit de l ex-ligne 10 = 1000.0, rien d autre.
+Cas D (ligne editee supprimee) : champ ligne 7, taper 777, X sur cette meme ligne. Attendu : ligne supprimee, 777 nulle part.
+Cas E : champ ligne 20, taper 2000, Cloturer. Attendu : recapitulatif ligne 20 = 2000.0.
+Controle (meme shell sqlite3) : SELECT code_produit, quantite FROM lignes_collecte WHERE id_session=(SELECT MAX(id_session) FROM sessions) ORDER BY date_saisie; -> quantite = rang, sauf 300/555/5/1000/2000 ; ex-lignes 2 et 7 absentes.
 <!-- SECTION:NOTES:END -->
 
 ## Comments

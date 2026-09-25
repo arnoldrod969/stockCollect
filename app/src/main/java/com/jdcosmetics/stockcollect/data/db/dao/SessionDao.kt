@@ -21,6 +21,17 @@ interface SessionDao {
     @Query("SELECT * FROM sessions WHERE statut = 'BROUILLON' ORDER BY date_heure_debut DESC LIMIT 1")
     suspend fun getLastBrouillon(): SessionEntity?
 
+    /**
+     * Le brouillon le plus récent **du type demandé**. [getLastBrouillon] seul ne suffit pas à la
+     * création : un brouillon plus récent d'un autre type masquerait celui qu'on veut reprendre.
+     */
+    @Query("""
+        SELECT * FROM sessions
+        WHERE statut = 'BROUILLON' AND type_operation = :typeOperation
+        ORDER BY date_heure_debut DESC LIMIT 1
+    """)
+    suspend fun getLastBrouillonDuType(typeOperation: String): SessionEntity?
+
     @Query("SELECT * FROM sessions WHERE statut = 'CLOTUREE' ORDER BY date_heure_debut DESC LIMIT 1")
     suspend fun getMostRecentCloturee(): SessionEntity?
 

@@ -112,6 +112,10 @@ class NouvelleSessionFragment : Fragment() {
                 viewModel.reprendreBrouillon(state.idSession)
             }
             .setNegativeButton("Ne rien faire") { _, _ -> viewModel.resetState() }
+            // Retour ou tap hors du dialogue : sans ce reset, l'état restait BrouillonAutreType
+            // dans le ViewModel partagé, et le dialogue ressurgissait à la prochaine ouverture
+            // de l'écran, avant tout clic.
+            .setOnCancelListener { viewModel.resetState() }
             .show()
     }
 

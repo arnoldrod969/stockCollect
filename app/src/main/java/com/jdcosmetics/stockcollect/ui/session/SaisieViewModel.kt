@@ -73,20 +73,24 @@ class SaisieViewModel @Inject constructor(
         _uiState.value = SaisieUiState.Loading
         viewModelScope.launch {
             try {
-                val brouillonExistant = repository.getLastBrouillon()
-                if (brouillonExistant != null) {
-                    // Un brouillon d'un autre type ne se reprend pas en silence : les observations
-                    // saisies seraient jetées, et la collecte irait grossir une session
-                    // que l'utilisateur n'a pas choisie.
-                    if (brouillonExistant.typeOperation != typeOperation) {
-                        _uiState.value = SaisieUiState.BrouillonAutreType(
-                            idSession = brouillonExistant.idSession,
-                            typeBrouillon = brouillonExistant.typeOperation,
-                            typeDemande = typeOperation
-                        )
-                        return@launch
-                    }
-                    reprendre(brouillonExistant.idSession)
+                // Le brouillon du type demandé d'abord : chercher seulement le plus récent, tous
+                // types confondus, laissait un vieux brouillon ENTREE masquer un inventaire en
+                // cours — l'utilisateur n'avait alors que le mauvais brouillon à reprendre.
+                val brouillonDuType = repository.getLastBrouillonDuType(typeOperation)
+                if (brouillonDuType != null) {
+                    reprendre(brouillonDuType.idSession)
+                    return@launch
+                }
+                // Un brouillon d'un autre type ne se reprend pas en silence : les observations
+                // saisies seraient jetées, et la collecte irait grossir une session
+                // que l'utilisateur n'a pas choisie.
+                val brouillonAutreType = repository.getLastBrouillon()
+                if (brouillonAutreType != null) {
+                    _uiState.value = SaisieUiState.BrouillonAutreType(
+                        idSession = brouillonAutreType.idSession,
+                        typeBrouillon = brouillonAutreType.typeOperation,
+                        typeDemande = typeOperation
+                    )
                     return@launch
                 }
                 val id = repository.creerSession(typeOperation, lieu, observations)
@@ -123,16 +127,23 @@ class SaisieViewModel @Inject constructor(
         _uiState.value = SaisieUiState.SessionCreee(idSession)
     }
 
+    /**
+     * `observerLignes` part **avant** la lecture de la session, pas après : placé derrière une
+     * suspension, deux appels rapprochés relançaient le collecteur dans l'ordre où leurs lectures
+     * revenaient, et le premier pouvait l'emporter — liste de A affichée sous la session B.
+     */
     fun chargerSessionExistante(idSession: Long) {
         _idSessionCourante = idSession
+        observerLignes(idSession)
         viewModelScope.launch {
             chargerSession(idSession)
-            observerLignes(idSession)
         }
     }
 
+    /** Une lecture revenue après un changement de session ne doit pas écraser la courante. */
     private suspend fun chargerSession(id: Long) {
-        _sessionCourante.value = repository.getById(id)
+        val session = repository.getById(id)
+        if (id == _idSessionCourante) _sessionCourante.value = session
     }
 
     /**

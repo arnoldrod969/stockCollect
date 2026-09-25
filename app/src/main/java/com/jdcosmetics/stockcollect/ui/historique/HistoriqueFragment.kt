@@ -10,6 +10,7 @@ import androidx.fragment.app.viewModels
 import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.jdcosmetics.stockcollect.data.db.entity.StatutSession
+import com.jdcosmetics.stockcollect.data.db.entity.TypeOperation
 import com.jdcosmetics.stockcollect.databinding.FragmentHistoriqueBinding
 import dagger.hilt.android.AndroidEntryPoint
 
@@ -51,9 +52,11 @@ class HistoriqueFragment : Fragment() {
         }
 
         binding.chipTous.setOnClickListener { viewModel.filtrer(null) }
-        binding.chipInventaire.setOnClickListener { viewModel.filtrer("INVENTAIRE") }
-        binding.chipEntree.setOnClickListener { viewModel.filtrer("ENTREE") }
-        binding.chipSortie.setOnClickListener { viewModel.filtrer("SORTIE") }
+        // ENTREE et SORTIE ne sont plus créables, mais des sessions de ces types peuvent exister
+        // sur les tablettes déployées : leurs puces restent pour les retrouver.
+        binding.chipInventaire.setOnClickListener { viewModel.filtrer(TypeOperation.INVENTAIRE) }
+        binding.chipEntree.setOnClickListener { viewModel.filtrer(TypeOperation.ENTREE) }
+        binding.chipSortie.setOnClickListener { viewModel.filtrer(TypeOperation.SORTIE) }
 
         binding.btnExporter.setOnClickListener {
             findNavController().navigate(

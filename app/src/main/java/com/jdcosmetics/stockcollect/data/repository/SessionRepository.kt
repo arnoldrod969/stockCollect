@@ -48,6 +48,9 @@ class SessionRepository @Inject constructor(
 
     suspend fun getLastBrouillon(): SessionEntity? = sessionDao.getLastBrouillon()
 
+    suspend fun getLastBrouillonDuType(typeOperation: String): SessionEntity? =
+        sessionDao.getLastBrouillonDuType(typeOperation)
+
     fun getLignes(idSession: Long): Flow<List<LigneCollecteEntity>> =
         ligneDao.getLignesBySession(idSession)
 

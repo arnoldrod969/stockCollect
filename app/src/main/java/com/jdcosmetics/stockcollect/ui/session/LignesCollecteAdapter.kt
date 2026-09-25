@@ -10,6 +10,22 @@ import com.jdcosmetics.stockcollect.data.db.entity.LigneCollecteEntity
 import com.jdcosmetics.stockcollect.databinding.ItemLigneCollecteBinding
 import com.jdcosmetics.stockcollect.util.FormatUtils
 
+/**
+ * La quantité à écrire pour le texte du champ, ou `null` s'il n'y a rien à écrire.
+ *
+ * Le champ affiche la quantité arrondie à une décimale : comparer le nombre relu au `Double` en
+ * base réécrivait 1.25 en 1.3 au simple passage du focus, sans que rien n'ait été tapé. On compare
+ * donc d'abord au texte affiché. Revers assumé : taper exactement ce texte arrondi n'écrit rien.
+ *
+ * Fonction pure, hors du ViewHolder, pour être testée sans Android (LignesCollecteAdapterTest).
+ */
+internal fun quantiteAEcrire(saisie: String?, quantiteEnBase: Double): Double? {
+    val texte = saisie?.trim().orEmpty()
+    if (texte == FormatUtils.formatQuantite(quantiteEnBase)) return null
+    val q = texte.toDoubleOrNull() ?: return null
+    return q.takeIf { it >= 0 && it != quantiteEnBase }
+}
+
 class LignesCollecteAdapter(
     private val onQuantiteChanged: (LigneCollecteEntity, Double) -> Unit,
     private val onSupprimer: (LigneCollecteEntity) -> Unit
@@ -62,8 +78,8 @@ class LignesCollecteAdapter(
         /** Écrit la quantité tapée, si elle est lisible et différente de celle déjà enregistrée. */
         private fun validerSaisie() {
             val courante = ligneCourante() ?: return
-            val q = binding.etQuantite.text?.toString()?.trim()?.toDoubleOrNull() ?: return
-            if (q >= 0 && q != courante.quantite) onQuantiteChanged(courante, q)
+            val q = quantiteAEcrire(binding.etQuantite.text?.toString(), courante.quantite) ?: return
+            onQuantiteChanged(courante, q)
         }
 
         /**
